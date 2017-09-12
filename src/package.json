@@ -24,5 +24,11 @@
   "homepage": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder#readme",
   "dev-dependencies": {
     "electron": "^1.6.11"
+  },
+  "build": {
+    "win": {
+      "target": "portable",
+      "icon": "images/icon.ico"
+    }
   }
 }
