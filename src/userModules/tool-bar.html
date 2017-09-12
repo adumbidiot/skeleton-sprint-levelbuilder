@@ -1,0 +1,162 @@
+<link rel="import"  href="../bower_components/polymer/polymer.html">
+
+<dom-module id="tool-bar">
+    <template>
+        <style>
+            #container{
+                position:absolute;
+                right:10px;
+                top:10px;
+                height:450px;
+                width:100px;
+                outline: 1px solid black; 
+                background-image: url('../images/background.png');
+				z-index: 3;
+            }
+            .block{
+                position:absolute;
+                width: 50px;
+				height: 50px;
+            }
+            #block{
+                top:0px;
+                left:0px;
+            }
+            #block_key{
+                top:50px;
+                left:0px;
+            }
+            #item_key{
+                top:100px;
+                left:0px;
+            }
+            #decoration_scaffold{
+                top:150px;
+                left:0px;
+            }
+            #decoration_sconce{
+                top:200px;
+                left:0px;
+            }
+            #toggleblocksolid{
+                top:250px;
+                left:0px;
+            }
+            #toggleblockphase{
+                top:300px;
+                left:0px;
+            }
+            #switch{
+                top:350px;
+                left:0px;
+            }
+            #exit{
+                top:400px;
+                left:0px;  
+            }
+            #powerupburrow{
+                top:0px;
+                right:0px;
+            }
+            #onewaywalldown{
+                top:50px;
+                right:0px;
+            }   
+            #onewaywallleft{
+                top:100px;
+                right:0px;
+            }
+            #onewaywallright{
+                top:200px;
+                right:0px;
+            }
+			#onewaywallup{
+				top:150px;
+				right:0px;
+			}
+            #main{
+                top:250px;
+                right:0px;
+            }
+            #delete{
+                top:300px;
+                right:0px;
+            }
+        </style>
+	    <div id="container" on-click="clickblock">
+			<img src="./images/block.png" id = "block" alt = "block" class="block"/>
+			<img src="./images/block_key.png" id = "block_key" alt = "block_key" class="block"/>
+			<img src="./images/item_key.png" id = "item_key" alt = "item_key" class="block"/>
+			<img src="./images/decoration_scaffold.png" id = "decoration_scaffold" alt = "decoration_scaffold" class="block"/>
+			<img src="./images/decoration_sconce.png" id = "decoration_sconce" alt = "decoration_sconce" class="block"/>
+			<img src="./images/toggleblocksolid.png" id = "toggleblocksolid" alt = "toggleblocksolid" class="block"/>
+			<img src="./images/toggleblockphase.png" id = "toggleblockphase" alt = "toggleblockphase" class="block"/>
+			<img src="./images/switch.png" id = "switch" alt = "switch" class="block"/>
+			<img src="./images/exit.png" id = "exit" alt = "exit" class="block"/>
+			<img src="./images/powerupburrow.png" id = "powerupburrow" alt = "powerupburrow" class="block"/>
+            <img src="./images/onewaywalldown.png" id = "onewaywalldown" alt = "onewaywalldown" class="block"/>
+		    <img src="./images/onewaywallleft.png" id = "onewaywallleft" alt = "onewaywallleft" class="block"/>
+            <img src="./images/onewaywallup.png" id = "onewaywallup" alt = "onewaywallup" style="" class="block"/>
+            <img src="./images/onewaywallright.png" id = "onewaywallright" alt = "onewaywallright" class="block"/>
+            <img src="./images/main.png" id = "main" alt = "main" style="" class="block"/>
+			<img src="./images/delete.png" id = "delete" alt = "delete" class="block"/>
+		</div>
+    </template>
+
+    <script>
+    
+    class ToolBar extends Polymer.Element {
+        static get is() { 
+            return "tool-bar"; 
+        }
+        
+        constructor(){
+            super();
+			window.addEventListener('keydown', this.keyPressHandler);  
+        }
+        
+        clickblock(event){
+			var id = event.target.id;
+			if(id == level.active){
+				id = null;
+			}
+			event.target.style.outline = "5px dotted powderblue";
+            event.target.style.zIndex = "1";
+			if(level.active){
+                var currentActiveBlock = this.$[level.active];
+                currentActiveBlock.style.outline = '0px';
+                currentActiveBlock.style.zIndex = '0';
+			}
+			level.active = id;
+		}
+		
+		keyPressHandler(event){
+			if(!level.active.startsWith('onewaywall')) return;
+			switch(event.keyCode){
+				case 87:
+				case 38:
+					level.active = 'onewaywallup';
+					break;
+				case 65:
+				case 37:
+					level.active = 'onewaywallleft';
+					break;
+				case 83:
+				case 40:
+					level.active = 'onewaywalldown';
+					break;
+				case 68:
+				case 39:
+					level.active = 'onewaywallright';
+					break;
+			}
+			level.renderShadow(level.shadowIndex, level.active);
+		}
+    
+    }
+
+    customElements.define(ToolBar.is, ToolBar);
+				
+  </script>
+
+</dom-module>

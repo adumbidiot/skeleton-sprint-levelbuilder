@@ -1,0 +1,28 @@
+{
+  "name": "skeleton-sprint-levelbuilder",
+  "version": "1.0.0",
+  "description": "levelbuilder for skeleton sprint",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adumbidiot/skeleton-sprint-levelbuilder.git"
+  },
+  "keywords": [
+    "skeleton",
+    "sprint",
+    "level",
+    "builder"
+  ],
+  "author": "nano",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder/issues"
+  },
+  "homepage": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder#readme",
+  "dev-dependencies": {
+    "electron": "^1.6.11"
+  }
+}

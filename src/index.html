@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <link rel="import" href="./userModules/export-level.html">
+        <link rel="import" href="./userModules/import-level.html">
+        <link rel="import" href="./userModules/tool-bar.html">
+		<script src="./js/lvl.js"></script>
+		<script src="./js/popupManager.js"></script>
+        
+		<script>
+			const level = new lvl('build');
+			var darkbox;
+			var gridbox;
+			var mngr;
+			
+			function generateExportView(){
+				return new ExportLevel(mngr);
+			}
+			
+			function generateImportView(){
+				return new ImportLevel(mngr);
+			}
+			
+			window.onload = function(){
+				mngr = new popupManager();
+				document.getElementById('placeholder').appendChild(level.generateBoard());
+				
+				darkbox = document.getElementById('dark');
+				gridbox = document.getElementById('gridbox');
+				darkbox.onchange = function(){
+					level.setDark(!level.setDarkdark);
+				}
+				gridbox.onchange = function(){
+					if(gridbox.checked){
+						level.enableGrid();
+					}else{
+						level.disableGrid();
+					}
+				}
+			}
+
+			function openExportPopup(){
+				mngr.openPopup(generateExportView());
+			}
+
+			function openImportPopup(){
+				mngr.openPopup(generateImportView());
+			}
+
+			function importlvl1D(){
+				var data = document.getElementById('interface').value;
+				level.import1D(data);
+			}
+			/*window.ondragstart = function(){
+				return false;
+			}*/
+           
+			level.ondarkchange = function(value){
+				darkbox.checked = value;
+			}
+            /*var resizeTarget;
+            function startResize(e){
+                window.addEventListener('mousemove', resize, false);
+                window.addEventListener('mouseup', endResize, false);
+                resizeTarget = e.target.parentNode;
+                console.log(e);
+            }
+            function resize(e){
+                resizeTarget.style.width = (e.clientX - resizeTarget.offsetLeft) + 'px';
+                console.log(e);
+                console.log(resizeTarget.width);
+            }
+            function endResize(){
+            
+            }  */
+		</script>
+		<!--<style>
+			* {
+    				-webkit-touch-callout:none;
+    				-webkit-user-select:none;
+  				    -moz-user-select:none;
+    				-ms-user-select:none;
+    				user-select:none;
+			}
+		</style>-->
+	</head>
+	<body>
+		    <tool-bar style="z-index: -1;"></tool-bar>
+			<div id="placeholder" style="">
+                <!--<div style="width:10px;height:10px;border-radius: 5px; background-color: blue; position: absolute; bottom: 25px; right: 180px;" onmousedown="startResize(event);"></div>-->
+            </div>
+            <div style="outline:2px solid; width:800px; bottom:-20px; position:relative;">
+				<button onclick="openExportPopup()">Export</button>
+				<button onclick="openImportPopup()">Import</button>
+				<textarea id="interface" style="width:400px"></textarea>
+				<input id="dark" type="checkbox">Dark
+				<input id="gridbox" type="checkbox" checked>Enable Grid
+			</div>
+		</div>
+	</body>
+</html>

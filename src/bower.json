@@ -1,0 +1,29 @@
+{
+  "name": "skeleton-sprint-levelbuilder",
+  "description": "levelbuilder for skeleton sprint",
+  "main": "main.js",
+  "authors": [
+    "nano"
+  ],
+  "license": "ISC",
+  "keywords": [
+    "skeleton",
+    "sprint",
+    "level",
+    "builder"
+  ],
+  "homepage": "index.html",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.2",
+    "paper-radio-group": "^2.0.0",
+    "paper-toggle-button": "^2.0.0"
+  }
+}

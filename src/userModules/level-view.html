@@ -1,0 +1,60 @@
+<link rel="import"  href="../bower_components/polymer/polymer.html">
+<!--<link rel="import"  href="/games/platformer/modules/paper-radio-group/index.html">-->
+<!--<link rel="import"  href="https://polygit.org/components/iron-input/iron-input.html">-->
+
+<dom-module id="level-view">
+    <template>
+        <style>
+            #cancel{
+                position: absolute; 
+                bottom: 2px; 
+                right: 2px;
+            }
+        </style>
+
+        <button on-click="cancelHandler" id="cancel">Cancel</button>
+
+        <input type="radio" name="export" id="AS3" checked>
+            <span>2D AS3 Array</span>        
+        </input>
+        <br>
+
+        <input type="radio" name="export" id="lbl">
+            <span>Line by Line Representation</span>
+        </input>
+        <br>
+        
+        <input type="radio" name="export" id="png">
+            <span>PNG Rendering of Level</span>
+        </input>
+        <br>
+        
+    </template>
+
+    <script>
+    
+    class LevelView extends Polymer.Element {
+        static get is() { 
+            return "level-view"; 
+        }
+        
+        constructor(popMngr){
+            super(); 
+            this.mngr = popMngr;  
+        }
+        
+        close(){
+            this.mngr.closePopup(true);
+        }
+
+        cancelHandler(){
+            this.close();
+        }
+    
+    }
+
+    customElements.define(LevelView.is, LevelView);
+				
+  </script>
+
+</dom-module>
