@@ -8,7 +8,7 @@
                 right:10px;
                 top:10px;
                 height:450px;
-                width:100px;
+                width:150px;
                 outline: 1px solid black; 
                 background-image: url('../images/background.png');
 				z-index: 3;
@@ -56,30 +56,46 @@
             }
             #powerupburrow{
                 top:0px;
-                right:0px;
+                right:50px;
             }
             #onewaywalldown{
                 top:50px;
-                right:0px;
+                right:50px;
             }   
             #onewaywallleft{
                 top:100px;
-                right:0px;
+                right:50px;
             }
             #onewaywallright{
                 top:200px;
-                right:0px;
+                right:50px;
             }
 			#onewaywallup{
 				top:150px;
-				right:0px;
+				right:50px;
+			}
+			#pipe_in{
+				top:250px;
+				right:50px;
+			}
+			#pipe_out{
+				top: 300px;
+				right:50px;	
+			}
+			#pipe_phase{
+				top: 350px;
+				right:50px;	
+			}
+			#pipe_solid{
+				top: 400px;
+				right:50px;	
 			}
             #main{
-                top:250px;
+                top:350px;
                 right:0px;
             }
             #delete{
-                top:300px;
+                top:400px;
                 right:0px;
             }
         </style>
@@ -98,6 +114,10 @@
 		    <img src="./images/onewaywallleft.png" id = "onewaywallleft" alt = "onewaywallleft" class="block"/>
             <img src="./images/onewaywallup.png" id = "onewaywallup" alt = "onewaywallup" style="" class="block"/>
             <img src="./images/onewaywallright.png" id = "onewaywallright" alt = "onewaywallright" class="block"/>
+			<img src="./images/pipe_in.png" id = "pipe_in" alt = "pipe_in" class="block"/>
+			<img src="./images/pipe_out.png" id = "pipe_out" alt = "pipe_out" class="block"/>
+			<img src="./images/pipe_phase.png" id = "pipe_phase" alt = "pipe_phase" class="block"/>
+			<img src="./images/pipe_solid.png" id = "pipe_solid" alt = "pipe_solid" class="block"/>
             <img src="./images/main.png" id = "main" alt = "main" style="" class="block"/>
 			<img src="./images/delete.png" id = "delete" alt = "delete" class="block"/>
 		</div>
@@ -112,7 +132,7 @@
         
         constructor(){
             super();
-			window.addEventListener('keydown', this.keyPressHandler);  
+			window.addEventListener('keydown', this.keyPressHandler.bind(this));  
         }
         
         clickblock(event){
@@ -131,26 +151,30 @@
 		}
 		
 		keyPressHandler(event){
-			if(!level.active.startsWith('onewaywall')) return;
+			if(!level.active || !level.active.startsWith('onewaywall')) return;
 			switch(event.keyCode){
 				case 87:
 				case 38:
-					level.active = 'onewaywallup';
+					if(level.active == 'onewaywallup') break;
+					this.$['onewaywallup'].click();
 					break;
 				case 65:
 				case 37:
-					level.active = 'onewaywallleft';
+					if(level.active == 'onewaywallleft') break;
+					this.$['onewaywallleft'].click();
 					break;
 				case 83:
 				case 40:
-					level.active = 'onewaywalldown';
+					if(level.active == 'onewaywalldown') break;
+					this.$['onewaywalldown'].click();
 					break;
 				case 68:
 				case 39:
-					level.active = 'onewaywallright';
+					if(level.active == 'onewaywallright') break;
+					this.$['onewaywallright'].click();
 					break;
 			}
-			level.renderShadow(level.shadowIndex, level.active);
+			//level.renderShadow(level.shadowIndex, level.active);
 		}
     
     }

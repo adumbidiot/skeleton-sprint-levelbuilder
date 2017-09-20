@@ -47,6 +47,10 @@ window.lvl = function(name){
         onewaywalldown: 'OD',
         onewaywallleft: 'OL',
         onewaywallright: 'OR',
+		pipe_in: 'CI',
+		pipe_out: 'CO',
+		pipe_phase: 'CP',
+		pipe_solid: 'CS',
 		null: '00'
 	}
 	
@@ -78,6 +82,10 @@ window.lvl = function(name){
         'OD': 'onewaywalldown',
         'OL': 'onewaywallleft',
         'OR': 'onewaywallright',
+		'CI': 'pipe_in',
+		'CO': 'pipe_out',
+		'CP': 'pipe_phase',
+		'CS': 'pipe_solid',
 		'00': 'null'
 	}
 	//Stupid js "this" crap
@@ -128,11 +136,11 @@ window.lvl.prototype.render = function(index, blockType){
 
     this.history.push({oldBlock: target.block || 'delete', newBlock: blockType, index: index});
 	
-	/*console.log(target.childNodes[0].type == 'shadowBlock'); //type of undefined
-	if(target.block || target.childNodes[0].type == 'shadowBlock'){
+	//console.log(target.childNodes[0].type == 'shadowBlock'); //type of undefined
+	if(target.block /*|| target.childNodes[0].type == 'shadowBlock'*/){
 		this.clearTile(index);
 	}
-	*/
+	
 	if(blockType == 'delete') return;
 
 	target.block = blockType;
