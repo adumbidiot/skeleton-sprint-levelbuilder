@@ -91,15 +91,15 @@
 				right:50px;	
 			}
             #main{
-                top:350px;
+                top:0px;
                 right:0px;
             }
             #delete{
-                top:400px;
+                top:50px;
                 right:0px;
             }
         </style>
-	    <div id="container" on-click="clickblock">
+	    <div id="container" on-click="clickblock" on-dragstart="dragstartblock">
 			<img src="./images/block.png" id = "block" alt = "block" class="block"/>
 			<img src="./images/block_key.png" id = "block_key" alt = "block_key" class="block"/>
 			<img src="./images/item_key.png" id = "item_key" alt = "item_key" class="block"/>
@@ -149,6 +149,11 @@
 			}
 			level.active = id;
 		}
+
+		dragstartblock(event){
+			event.target.click();
+			event.preventDefault();
+		}
 		
 		keyPressHandler(event){
 			if(!level.active || !level.active.startsWith('onewaywall')) return;
@@ -156,7 +161,7 @@
 				case 87:
 				case 38:
 					if(level.active == 'onewaywallup') break;
-					this.$['onewaywallup'].click();
+					this.$['onewaywallup'].click(); //Fite me
 					break;
 				case 65:
 				case 37:

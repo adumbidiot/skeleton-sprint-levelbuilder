@@ -242,7 +242,13 @@ window.lvl.prototype.renderEvent = function(event){
 	}
 	
 	var index = Number(target.id.slice(this.name.length)) - 1;
-	this.render(index, this.active);
+
+	if(event.button == 0){ //Left Click
+		this.render(index, this.active);
+	}
+	if(event.button == 2){ //Right Click
+		this.render(index, "delete");
+	}
 }
 
 window.lvl.prototype.renderShadowEvent = function(event){
