@@ -24,12 +24,19 @@
   "homepage": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder#readme",
   "dev-dependencies": {
     "electron": "^1.6.11",
-	"electron-builder": "^19.29.2"
+    "electron-builder": "^19.29.2"
   },
   "build": {
     "win": {
       "target": "portable",
       "icon": "images/icon.ico"
     }
+  },
+  "devDependencies": {
+    "electron-rebuild": "^1.6.0"
+  },
+  "dependencies": {
+    "electron": "^1.4.1",
+    "greenworks": "git+https://github.com/greenheartgames/greenworks.git"
   }
 }

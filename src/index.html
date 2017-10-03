@@ -4,6 +4,8 @@
         <link rel="import" href="./userModules/export-level.html">
         <link rel="import" href="./userModules/import-level.html">
         <link rel="import" href="./userModules/tool-bar.html">
+		<link rel="import" href="./bower_components/paper-button/paper-button.html">
+		<link rel="import" href="./bower_components/paper-checkbox/paper-checkbox.html">
 		<script src="./js/lvl.js"></script>
 		<script src="./js/popupManager.js"></script>
         
@@ -83,18 +85,36 @@
     				user-select:none;
 			}
 		</style>-->
+		<style is="custom-style">
+				paper-button.export{
+					background-color: #FF0000;
+					--paper-button-ink-color: #303030;
+					color: #000000;
+				}	
+				paper-button.import{
+					background-color: #FF0000;
+					--paper-button-ink-color: #303030;
+					color: #000000;
+				}
+				paper-toggle-button.grid{
+					--paper-toggle-button-checked-bar-color: #FF0000;
+					--paper-toggle-button-checked-button-color: #FF0000;
+				}
+		</style>
 	</head>
 	<body style="background-color: #303030">
 		    <tool-bar style="z-index: -1;"></tool-bar>
 			<div id="placeholder" style="">
                 <!--<div style="width:10px;height:10px;border-radius: 5px; background-color: blue; position: absolute; bottom: 25px; right: 180px;" onmousedown="startResize(event);"></div>-->
             </div>
-            <div style="outline:2px solid; width:800px; bottom:-20px; position:relative; background-color: white">
-				<button onclick="openExportPopup()">Export</button>
-				<button onclick="openImportPopup()">Import</button>
+			<div style="width:800px; bottom:-20px; position:relative; background-color: #777777; border: 2px solid black; height: 50px; border-radius: 50px;">
+				<paper-button raised onclick="openExportPopup()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
+				<paper-button raised onclick="openImportPopup()" class = "import" style="position:absolute; top:5px; height: 40px; left:125px;">Import</paper-button>
+				<paper-toggle-button id="gridbox" style="left: 225px;position:absolute;top:5px; height: 40px;" class="grid" checked>Enable Grid</paper-toggle-button>
+			</div>
+            <div style="outline:2px solid; width:800px; bottom:-40px; position:relative; background-color: white;">
 				<textarea id="interface" style="width:400px"></textarea>
 				<input id="dark" type="checkbox">Dark
-				<input id="gridbox" type="checkbox" checked>Enable Grid
 			</div>
 		</div>
 	</body>

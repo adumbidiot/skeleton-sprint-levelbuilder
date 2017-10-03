@@ -24,6 +24,8 @@
   "dependencies": {
     "polymer": "Polymer/polymer#^2.0.2",
     "paper-radio-group": "^2.0.0",
-    "paper-toggle-button": "^2.0.0"
+    "paper-toggle-button": "^2.0.0",
+    "paper-button": "^2.0.0",
+    "paper-checkbox": "^2.0.1"
   }
 }
