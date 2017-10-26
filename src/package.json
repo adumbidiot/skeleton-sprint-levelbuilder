@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder#readme",
   "dev-dependencies": {
-    "electron": "^1.6.11",
+    "electron": "^1.7.9",
     "electron-builder": "^19.29.2"
   },
   "build": {
@@ -36,8 +36,7 @@
     "electron-rebuild": "^1.6.0"
   },
   "dependencies": {
-    "electron": "^1.4.1",
-    "greenworks": "git+https://github.com/greenheartgames/greenworks.git",
-    "node-abi": "^2.1.1"
+
+    "greenworks": "git+https://github.com/greenheartgames/greenworks.git"
   }
 }
