@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "electron": "^1.4.1",
-    "greenworks": "git+https://github.com/greenheartgames/greenworks.git"
+    "greenworks": "git+https://github.com/greenheartgames/greenworks.git",
+    "node-abi": "^2.1.1"
   }
 }
