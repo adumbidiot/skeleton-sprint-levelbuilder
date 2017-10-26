@@ -8,6 +8,12 @@ const BrowserWindow = electron.BrowserWindow;
 
 let mainWindow;
 
+if(greenworks.initAPI()){
+	console.log('Steam API Initialized');
+}else{
+	console.log('Steam API not Initialized');
+}
+
 function createWindow(){
     mainWindow = new BrowserWindow({width: 1920, height: 1080});
     mainWindow.loadURL(url.format({
