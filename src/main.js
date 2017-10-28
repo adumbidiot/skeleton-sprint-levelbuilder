@@ -1,18 +1,12 @@
 const electron = require('electron');
 const path = require('path');
 const url = require('url');
-const greenworks = require('greenworks');
+
 
 const app = electron.app;
 const BrowserWindow = electron.BrowserWindow;
 
 let mainWindow;
-
-if(greenworks.initAPI()){
-	console.log('Steam API Initialized');
-}else{
-	console.log('Steam API not Initialized');
-}
 
 function createWindow(){
     mainWindow = new BrowserWindow({width: 1920, height: 1080});

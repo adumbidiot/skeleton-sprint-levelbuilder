@@ -6,10 +6,26 @@
         <link rel="import" href="./userModules/tool-bar.html">
 		<link rel="import" href="./bower_components/paper-button/paper-button.html">
 		<link rel="import" href="./bower_components/paper-checkbox/paper-checkbox.html">
+		<link rel="import" href="./bower_components/paper-dialog/paper-dialog.html">
+		<link rel="import" href="./bower_components/paper-radio-button/paper-radio-button.html">
+		<link rel="import" href="./bower_components/paper-radio-group/paper-radio-group.html">
+		<link rel="import" href="./bower_components/paper-icon-button/paper-icon-button.html">
+		<link rel="import" href="./bower_components/paper-input/paper-input.html">
+		<link rel="import" href="./bower_components/iron-icons/iron-icons.html">
 		<script src="./js/lvl.js"></script>
 		<script src="./js/popupManager.js"></script>
         
 		<script>
+			//Electron code
+			const greenworks = require('greenworks');
+			let steam = false;
+			if(greenworks.initAPI()){
+				console.log('Steamworks API Initialized');
+			}else{
+				console.log('Steamworks API Initialization Failed');
+			}
+			
+			//Legacy browser code
 			const level = new lvl('build');
 			var darkbox;
 			var gridbox;
@@ -23,6 +39,7 @@
 				return new ImportLevel(mngr);
 			}
 			
+			let exportWindow = {};
 			window.onload = function(){
 				mngr = new popupManager();
 				document.getElementById('placeholder').appendChild(level.generateBoard());
@@ -39,6 +56,9 @@
 						level.disableGrid();
 					}
 				}
+				exportWindow.main = document.getElementById('export');
+				exportWindow.steam = document.getElementById('export-steam');
+				
 			}
 
 			function openExportPopup(){
@@ -108,7 +128,7 @@
                 <!--<div style="width:10px;height:10px;border-radius: 5px; background-color: blue; position: absolute; bottom: 25px; right: 180px;" onmousedown="startResize(event);"></div>-->
             </div>
 			<div style="width:800px; bottom:-20px; position:relative; background-color: #777777; border: 2px solid black; height: 50px; border-radius: 50px;">
-				<paper-button raised onclick="openExportPopup()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
+				<paper-button raised onclick="exportWindow.main.open()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
 				<paper-button raised onclick="openImportPopup()" class = "import" style="position:absolute; top:5px; height: 40px; left:125px;">Import</paper-button>
 				<paper-toggle-button id="gridbox" style="left: 225px;position:absolute;top:5px; height: 40px;" class="grid" checked>Enable Grid</paper-toggle-button>
 			</div>
@@ -116,6 +136,24 @@
 				<textarea id="interface" style="width:400px"></textarea>
 				<input id="dark" type="checkbox">Dark
 			</div>
+			<paper-dialog modal id="export">
+				<div>
+					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.main.close()"></paper-icon-button>
+				</div>
+				<div style="padding-top: 10px;">
+					<h1>Export Options</h1>
+					<paper-button raised onclick="exportWindow.steam.open()">Steam Workshop</paper-button>
+				</div>
+			</paper-dialog>
+			<paper-dialog modal id="export-steam">
+				<div>
+					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.steam.close()"></paper-icon-button>
+				</div>
+				<div style="padding-top: 10px;">
+					<h1>Steam Workshop Upload</h1>
+					<paper-input></paper-input>
+				</div>
+			</paper-dialog>
 		</div>
 	</body>
 </html>
