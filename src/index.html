@@ -11,6 +11,7 @@
 		<link rel="import" href="./bower_components/paper-radio-group/paper-radio-group.html">
 		<link rel="import" href="./bower_components/paper-icon-button/paper-icon-button.html">
 		<link rel="import" href="./bower_components/paper-input/paper-input.html">
+		<link rel="import" href="./bower_components/paper-input/paper-textarea.html">
 		<link rel="import" href="./bower_components/iron-icons/iron-icons.html">
 		<script src="./js/lvl.js"></script>
 		<script src="./js/popupManager.js"></script>
@@ -18,9 +19,20 @@
 		<script>
 			//Electron code
 			const greenworks = require('greenworks');
+			const process = require('process');
+			process.activateUvLoop();
+			const fs = require('fs');
 			let steam = false;
 			if(greenworks.initAPI()){
 				console.log('Steamworks API Initialized');
+				steam = true;
+
+				greenworks.ugcSynchronizeItems('../game/Levels', function(items){
+					console.log('Workshop Items Loaded: ');
+					console.log(items);
+				}, function(err){
+					throw err;
+				});
 			}else{
 				console.log('Steamworks API Initialization Failed');
 			}
@@ -56,9 +68,109 @@
 						level.disableGrid();
 					}
 				}
+				
 				exportWindow.main = document.getElementById('export');
 				exportWindow.steam = document.getElementById('export-steam');
+				exportWindow.steam.title = document.getElementById('export-steam-title');
+				exportWindow.steam.button = document.getElementById('export-steam-button');
 				
+				if(!steam){
+					exportWindow.steam.button.setAttribute('disabled', '');
+				}
+				
+				exportWindow.closeAll = function(){
+					exportWindow.main.close();
+					exportWindow.steam.close();
+				}
+				
+				exportWindow.steam.upload = function(){
+					let title = document.getElementById('export-steam-title').value; //TODO: Validate param
+					let description = ''; //TODO: Get description
+					
+					let levelpath = 'levels/' + title + '.txt';
+					let levelUploadPath = title + '.txt'
+					let coverPath = 'levels/' + title + '.png'; //TODO: Cover images
+					let levelData = level.exportLBL();
+					
+					function createLevelsFolder(){
+						return new Promise(function(resolve, reject){
+							fs.stat('levels', function(err, stats){
+								err = err || {};
+								if(err.code === 'ENOENT'){
+									console.log('Levels Folder Not Found: Possible loss of data');
+									fs.mkdir('levels', function(err){
+										if(err){
+											throw err;
+										}else{
+											resolve();
+											onLevelsFolder(levelUploadPath, data, title);
+										}
+									});
+								}else{
+									resolve(); //TODO: Logic of cahced files
+								}
+							});
+						});
+					}
+					
+					function createSteamFile(path, data){
+						return new Promise(function(resolve, reject){
+							if(!greenworks.isCloudEnabledForUser()){
+								reject("Cloud disabled by user, workshop disabled");
+							}
+							if(!greenworks.isCloudEnabled()){
+								reject("Cloud disabled by game, workshop disabled");
+							}
+							greenworks.saveTextToFile(path, data, function(){
+								resolve();
+							},
+							function(err){
+								reject(err);
+							});
+						});
+					}
+					
+					function shareSteamFile(path){
+						return new Promise(function(resolve, reject){
+							greenworks.fileShare(path, function(){
+								resolve();
+							}, function(err){
+								reject(err);
+							});
+						});
+					}
+					
+					function publishToWorkshop(levelUploadPath, imageUploadPath, title, description){
+						return new Promise(function(resolve, reject){
+							greenworks.publishWorkshopFile(levelUploadPath, imageUploadPath, title, description, function(handle){
+								resolve(handle);
+							}, function(err){
+								throw err;
+							});
+						});
+					}
+					
+					createLevelsFolder().catch(function(err){
+						throw err;
+					}).then(function(){
+						return createSteamFile(levelUploadPath, levelData);
+					}).catch(function(err){
+						throw err;
+					}).then(function(){
+						console.log('Level File Uploaded');
+						return shareSteamFile(levelUploadPath);
+					}).catch(function(err){
+						throw err;
+					}).then(function(){
+						console.log('Level File Shared');
+						return publishToWorkshop(levelUploadPath, '', title, description);
+					}).catch(function(err){
+						throw err;
+					}).then(function(handle){
+						console.log('Workshop handle: ' + handle); //1183789806
+						console.log('File Published');
+					});
+				}
 			}
 
 			function openExportPopup(){
@@ -142,16 +254,18 @@
 				</div>
 				<div style="padding-top: 10px;">
 					<h1>Export Options</h1>
-					<paper-button raised onclick="exportWindow.steam.open()">Steam Workshop</paper-button>
+					<paper-button raised onclick="exportWindow.steam.open()" id="export-steam-button">Steam Workshop</paper-button>
 				</div>
 			</paper-dialog>
-			<paper-dialog modal id="export-steam">
+			<paper-dialog modal id="export-steam" style="width:100%; height:100%; top:0px;">
 				<div>
-					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.steam.close()"></paper-icon-button>
+					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
 				</div>
 				<div style="padding-top: 10px;">
 					<h1>Steam Workshop Upload</h1>
-					<paper-input></paper-input>
+					<paper-input label="Level Title" id="export-steam-title"></paper-input>
+					<paper-textarea label="Description"></paper-textarea>
+					<paper-button raised style="width: 100px;" onclick="exportWindow.steam.upload()">Upload</paper-button>
 				</div>
 			</paper-dialog>
 		</div>
