@@ -3,8 +3,11 @@ const path = require('path');
 const url = require('url');
 
 
+
 const app = electron.app;
 const BrowserWindow = electron.BrowserWindow;
+
+global.path = app.getPath('exe');
 
 let mainWindow;
 

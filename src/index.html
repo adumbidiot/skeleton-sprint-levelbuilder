@@ -20,14 +20,34 @@
 			//Electron code
 			const greenworks = require('greenworks');
 			const process = require('process');
+			const remote = require('electron').remote;
 			process.activateUvLoop();
 			const fs = require('fs');
+			
+			window.onerror = function (errorMsg, url, lineNumber) {
+               alert(errorMsg + lineNumber);
+               // alert("This is a stack trace! Wow! --> %s", error.stack);
+            };
+			
+			//var path = remote.getGlobal('path');
+			//console.log(path);
+			//console.log(__dirname);
+			/*console.log = function(data){
+				alert(data); //Comment out of relese build
+			}*/
+			
+			/*fs.readdir('C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Skeleton Sprint\\game\\Levels', (err, files) => {
+				files.forEach(file => {
+					console.log(file);
+				});
+			});*/
+			
 			let steam = false;
 			if(greenworks.initAPI()){
 				console.log('Steamworks API Initialized');
 				steam = true;
 
-				greenworks.ugcSynchronizeItems('../game/Levels', function(items){
+				greenworks.ugcSynchronizeItems('C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Skeleton Sprint\\game\\Levels', function(items){
 					console.log('Workshop Items Loaded: ');
 					console.log(items);
 				}, function(err){
