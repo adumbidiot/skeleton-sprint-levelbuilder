@@ -4,6 +4,7 @@
         <link rel="import" href="./userModules/export-level.html">
         <link rel="import" href="./userModules/import-level.html">
         <link rel="import" href="./userModules/tool-bar.html">
+		
 		<link rel="import" href="./bower_components/paper-button/paper-button.html">
 		<link rel="import" href="./bower_components/paper-checkbox/paper-checkbox.html">
 		<link rel="import" href="./bower_components/paper-dialog/paper-dialog.html">
@@ -21,6 +22,8 @@
 			const greenworks = require('greenworks');
 			const process = require('process');
 			const remote = require('electron').remote;
+			const srcDir = process.cwd();
+			console.log('srcDir: ' + srcDir);
 			process.activateUvLoop();
 			const fs = require('fs');
 			
@@ -32,16 +35,11 @@
 			//var path = remote.getGlobal('path');
 			//console.log(path);
 			//console.log(__dirname);
+			
 			/*console.log = function(data){
 				alert(data); //Comment out of relese build
 			}*/
-			
-			/*fs.readdir('C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Skeleton Sprint\\game\\Levels', (err, files) => {
-				files.forEach(file => {
-					console.log(file);
-				});
-			});*/
-			
+				
 			let steam = false;
 			if(greenworks.initAPI()){
 				console.log('Steamworks API Initialized');
@@ -90,6 +88,10 @@
 				}
 				
 				exportWindow.main = document.getElementById('export');
+				exportWindow.dev = document.getElementById('export-dev');
+				exportWindow.dev.num = document.getElementById('export-dev-num');
+				exportWindow.dev.button = document.getElementById('export-dev-button');
+				exportWindow.dev.titleBox = document.getElementById('export-dev-title');
 				exportWindow.steam = document.getElementById('export-steam');
 				exportWindow.steam.title = document.getElementById('export-steam-title');
 				exportWindow.steam.button = document.getElementById('export-steam-button');
@@ -101,6 +103,24 @@
 				exportWindow.closeAll = function(){
 					exportWindow.main.close();
 					exportWindow.steam.close();
+					exportWindow.dev.close();
+				}
+				
+				exportWindow.dev.saveFile = function(){
+					let num = exportWindow.dev.num.value || 'x';
+					let data = level.exportDev(num);
+					remote.dialog.showSaveDialog({defaultPath: srcDir + '/' + exportWindow.dev.titleBox.value + '.txt'}, function(path){
+						if(path){
+							fs.writeFile(path, data, function(err){
+								if(err){
+									throw err;
+								}else{
+									console.log("File Saved!");
+									exportWindow.closeAll();
+								}
+							});
+						}
+					});
 				}
 				
 				exportWindow.steam.upload = function(){
@@ -275,6 +295,18 @@
 				<div style="padding-top: 10px;">
 					<h1>Export Options</h1>
 					<paper-button raised onclick="exportWindow.steam.open()" id="export-steam-button">Steam Workshop</paper-button>
+					<paper-button raised onclick="exportWindow.dev.open()" id="export-dev-button">Dev Export</paper-button>
+				</div>
+			</paper-dialog>
+			<paper-dialog modal id="export-dev" style="width:100%; height:100%; top:0px;">
+				<div>
+					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
+				</div>
+				<div style="padding-top: 10px;">
+					<h1>Developer Export</h1>
+					<paper-input label="Level Title" id="export-dev-title" value="myLevel"></paper-input>
+					<paper-input label="Level Number" id="export-dev-num" type="number"></paper-input>
+					<paper-button raised style="width: 100px;" onclick="exportWindow.dev.saveFile()">Save</paper-button>
 				</div>
 			</paper-dialog>
 			<paper-dialog modal id="export-steam" style="width:100%; height:100%; top:0px;">

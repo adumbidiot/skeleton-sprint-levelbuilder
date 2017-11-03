@@ -322,6 +322,24 @@ lvl.prototype.exportPNG = function(cb){
 	}
 }
 
+lvl.prototype.exportDev = function(num){
+	num = num || 'x';
+	var array = this.export1D();
+	var array2D = [];
+	for(var i = 0; i != (32 * 18); i += 32){
+		var subArray = [];
+		for(var j = 0; j != 32; j++){
+			subArray.push(array[i+j]);
+		}
+		array2D.push(subArray);
+	}
+	var output = '';
+	for(var i = 0; i != 18; i++){
+		output += 'lvlArray['+ num +']['+ i + '] = [' + array2D[i].toString() + '];\n';
+	}
+	return output;
+}
+
 //TODO: Simplify/Rename/Remove
 lvl.prototype.export = function(){
 	var array = this.export1D();
