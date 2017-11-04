@@ -20,6 +20,7 @@
 		<script>
 			//Electron code
 			const greenworks = require('greenworks');
+			const path = require('path');
 			const process = require('process');
 			const remote = require('electron').remote;
 			const srcDir = process.cwd();
@@ -44,8 +45,9 @@
 			if(greenworks.initAPI()){
 				console.log('Steamworks API Initialized');
 				steam = true;
-
-				greenworks.ugcSynchronizeItems('C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Skeleton Sprint\\game\\Levels', function(items){
+			
+				let steamworksWorkshopSyncPath = path.resolve(srcDir, 'game/Levels');
+				greenworks.ugcSynchronizeItems(steamworksWorkshopSyncPath, function(items){
 					console.log('Workshop Items Loaded: ');
 					console.log(items);
 				}, function(err){
@@ -60,10 +62,6 @@
 			var darkbox;
 			var gridbox;
 			var mngr;
-			
-			function generateExportView(){
-				return new ExportLevel(mngr);
-			}
 			
 			function generateImportView(){
 				return new ImportLevel(mngr);
