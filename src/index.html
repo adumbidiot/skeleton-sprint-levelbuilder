@@ -14,6 +14,8 @@
 		<link rel="import" href="./bower_components/paper-input/paper-input.html">
 		<link rel="import" href="./bower_components/paper-input/paper-textarea.html">
 		<link rel="import" href="./bower_components/iron-icons/iron-icons.html">
+		<link rel="import" href="./bower_components/paper-spinner/paper-spinner-lite.html">
+		
 		<script src="./js/lvl.js"></script>
 		<script src="./js/popupManager.js"></script>
         
@@ -46,13 +48,21 @@
 				console.log('Steamworks API Initialized');
 				steam = true;
 			
-				let steamworksWorkshopSyncPath = path.resolve(srcDir, 'game/Levels');
-				greenworks.ugcSynchronizeItems(steamworksWorkshopSyncPath, function(items){
-					console.log('Workshop Items Loaded: ');
-					console.log(items);
-				}, function(err){
-					throw err;
-				});
+				let steamworksWorkshopSyncPath = path.resolve(srcDir, 'game/Custom Levels');
+				
+				if (!fs.existsSync(steamworksWorkshopSyncPath)){
+					fs.mkdirSync(steamworksWorkshopSyncPath);
+				}
+				try{
+					greenworks.ugcSynchronizeItems(steamworksWorkshopSyncPath, function(items){
+						console.log('Workshop Items Loaded: ');
+						console.log(items);
+					}, function(err){
+						throw err;
+					});
+				}catch(e){
+					alert(e);
+				}
 			}else{
 				console.log('Steamworks API Initialization Failed');
 			}
@@ -91,16 +101,39 @@
 				exportWindow.dev.button = document.getElementById('export-dev-button');
 				exportWindow.dev.titleBox = document.getElementById('export-dev-title');
 				exportWindow.steam = document.getElementById('export-steam');
-				exportWindow.steam.title = document.getElementById('export-steam-title');
+				exportWindow.steam.titleBox = document.getElementById('export-steam-title');
 				exportWindow.steam.button = document.getElementById('export-steam-button');
+				exportWindow.steam.description = document.getElementById('export-steam-description');
+				exportWindow.steam.loading = document.getElementById('export-steam-loading');
+				exportWindow.steam.loading.status = document.getElementById('export-steam-loading-status');
+				exportWindow.steam.loading.spinner = document.getElementById('export-steam-loading-spinner');
+				exportWindow.steam.loading.spinner.container = document.getElementById('export-steam-loading-spinner-container');
+				exportWindow.steam.loading.button = document.getElementById('export-steam-loading-button');
+				exportWindow.steam.loading.button.container = document.getElementById('export-steam-loading-button-container');
 				
 				if(!steam){
 					exportWindow.steam.button.setAttribute('disabled', '');
 				}
 				
+				exportWindow.steam.loading.setLoaded = function(){
+					exportWindow.steam.loading.status.innerHTML = 'Done';
+					exportWindow.steam.loading.removeAttribute('modal');
+					exportWindow.steam.loading.spinner.container.style.display = 'none';
+					exportWindow.steam.loading.button.container.style.display = '';
+					exportWindow.steam.loading.notifyResize();
+				}
+				exportWindow.steam.loading.reset = function(){
+					exportWindow.steam.loading.status.innerHTML = 'Uploading Files to Steam Cloud...';
+					exportWindow.steam.loading.setAttribute('modal', '');
+					exportWindow.steam.loading.spinner.container.style.display = '';
+					exportWindow.steam.loading.button.container.style.display = 'none';
+					exportWindow.steam.loading.notifyResize();
+				}
+				
 				exportWindow.closeAll = function(){
 					exportWindow.main.close();
 					exportWindow.steam.close();
+					exportWindow.steam.loading.close();
 					exportWindow.dev.close();
 				}
 				
@@ -111,7 +144,7 @@
 						if(path){
 							fs.writeFile(path, data, function(err){
 								if(err){
-									throw err;
+									throw err; //TODO: Handle errors
 								}else{
 									console.log("File Saved!");
 									exportWindow.closeAll();
@@ -122,97 +155,90 @@
 				}
 				
 				exportWindow.steam.upload = function(){
-					let title = document.getElementById('export-steam-title').value; //TODO: Validate param
-					let description = ''; //TODO: Get description
+					let title = exportWindow.steam.titleBox.value; //TODO: Validate param
+					let description = exportWindow.steam.description.value;
 					
-					let levelpath = 'levels/' + title + '.txt';
-					let levelUploadPath = title + '.txt'
-					let coverPath = 'levels/' + title + '.png'; //TODO: Cover images
+					let levelPath = title + '.txt';
+					let coverPath = title + '.png';
 					let levelData = level.exportLBL();
 					
-					function createLevelsFolder(){
+					exportWindow.steam.loading.reset();
+					exportWindow.closeAll();
+					exportWindow.steam.loading.open();
+					
+					function onStatusUpdate(status){
+						let stat;
+						switch(status){
+							case 'Completed on saving files on Steam Cloud.': {
+								stat = 'Sharing Files to Steam Cloud...';
+								break;
+							}
+							case 'Completed on sharing files.': {
+								stat = 'Uploading to Workshop...';
+								break;
+							}
+						}
+						console.log('Workshop Upload Status: ' + status);
+						exportWindow.steam.loading.status.innerHTML = stat;
+						exportWindow.steam.loading.notifyResize();
+					}
+					
+					function getLevelPNG(){
 						return new Promise(function(resolve, reject){
-							fs.stat('levels', function(err, stats){
-								err = err || {};
-								if(err.code === 'ENOENT'){
-									console.log('Levels Folder Not Found: Possible loss of data');
-									fs.mkdir('levels', function(err){
-										if(err){
-											throw err;
-										}else{
-											resolve();
-											onLevelsFolder(levelUploadPath, data, title);
-										}
-									});
-								}else{
-									resolve(); //TODO: Logic of cahced files
+							level.exportPNG(function(data){
+								resolve(data);
+							});
+						});
+					}
+					
+					function createFile(path, data, opts){
+						return new Promise(function(resolve, reject){
+							fs.writeFile(path, data, opts, function(err){
+								if(err){
+									return reject(err);
 								}
+								return resolve();
 							});
 						});
 					}
 					
-					function createSteamFile(path, data){
+					function publishSteamFile(levelPath, levelTitle, levelDescription, levelImagePath, update){
 						return new Promise(function(resolve, reject){
-							if(!greenworks.isCloudEnabledForUser()){
-								reject("Cloud disabled by user, workshop disabled");
-							}
-							if(!greenworks.isCloudEnabled()){
-								reject("Cloud disabled by game, workshop disabled");
-							}
-							greenworks.saveTextToFile(path, data, function(){
-								resolve();
-							},
-							function(err){
-								reject(err);
-							});
-						});
-					}
-					
-					function shareSteamFile(path){
-						return new Promise(function(resolve, reject){
-							greenworks.fileShare(path, function(){
-								resolve();
-							}, function(err){
-								reject(err);
-							});
-						});
-					}
-					
-					function publishToWorkshop(levelUploadPath, imageUploadPath, title, description){
-						return new Promise(function(resolve, reject){
-							greenworks.publishWorkshopFile(levelUploadPath, imageUploadPath, title, description, function(handle){
+							greenworks.ugcPublish(levelPath, levelTitle, levelDescription, levelImagePath, function(handle){
 								resolve(handle);
 							}, function(err){
-								throw err;
+								reject(err);
+							}, function(msg){
+								update(msg);
 							});
 						});
 					}
 					
-					createLevelsFolder().catch(function(err){
+					getLevelPNG().catch(function(err){
 						throw err;
+					}).then(function(data){
+						console.log("Cover File Generated!");
+						data = data.replace(/^data:image\/png;base64,/, "");
+						return createFile(coverPath, data, 'base64');
+					}).catch(function(err){
+						return err;
 					}).then(function(){
-						return createSteamFile(levelUploadPath, levelData);
+						console.log("Cover File Created!");
+						return createFile(levelPath, levelData);
 					}).catch(function(err){
 						throw err;
 					}).then(function(){
-						console.log('Level File Uploaded');
-						return shareSteamFile(levelUploadPath);
-					}).catch(function(err){
-						throw err;
-					}).then(function(){
-						console.log('Level File Shared');
-						return publishToWorkshop(levelUploadPath, '', title, description);
+						console.log('Level File Saved!');
+						return publishSteamFile(levelPath, title, description, coverPath, onStatusUpdate);
 					}).catch(function(err){
 						throw err;
 					}).then(function(handle){
-						console.log('Workshop handle: ' + handle); //1183789806
-						console.log('File Published');
+						console.log("Workshop File Uploaded!");
+						console.log("Workshop File Handle: " + handle);
+						exportWindow.steam.loading.setLoaded();
 					});
 				}
-			}
-
-			function openExportPopup(){
-				mngr.openPopup(generateExportView());
+				
 			}
 
 			function openImportPopup(){
@@ -223,6 +249,7 @@
 				var data = document.getElementById('interface').value;
 				level.import1D(data);
 			}
+			
 			/*window.ondragstart = function(){
 				return false;
 			}*/
@@ -314,8 +341,22 @@
 				<div style="padding-top: 10px;">
 					<h1>Steam Workshop Upload</h1>
 					<paper-input label="Level Title" id="export-steam-title"></paper-input>
-					<paper-textarea label="Description"></paper-textarea>
-					<paper-button raised style="width: 100px;" onclick="exportWindow.steam.upload()">Upload</paper-button>
+					<paper-textarea label="Description" id="export-steam-description"></paper-textarea>
+					<paper-button raised style="width: 100px;" onclick="exportWindow.steam.upload();">Upload</paper-button>
+				</div>
+			</paper-dialog>
+			<paper-dialog modal id="export-steam-loading">
+				<div style="text-align: center;">
+					<p>UPLOADING</p>
+				</div>
+				<div style="text-align:center;" id="export-steam-loading-spinner-container">
+					<paper-spinner-lite active id="export-steam-loading-spinner"></paper-spinner-lite>
+				</div>
+				<div style="text-align:center; display:none;" id="export-steam-loading-button-container">
+					<paper-icon-button icon="check" style="color: green; width: 100px;height: 100px;" id="export-steam-loading-button"></paper-icon-button>
+				</div>
+				<div style="text-align:center">
+					<p id="export-steam-loading-status">Uploading Files to Steam Cloud...</p>
 				</div>
 			</paper-dialog>
 		</div>

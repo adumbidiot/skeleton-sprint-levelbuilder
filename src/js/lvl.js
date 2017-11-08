@@ -288,7 +288,7 @@ lvl.prototype.exportPNG = function(cb){
 	var context = can.getContext('2d');
 	
 	var back = new Image();
-	back.src='./background.png';
+	back.src= './images/background.png';
 	context.drawImage(back, 0, 0, 800, 450);
 	
 	var count = 0;
@@ -312,7 +312,7 @@ lvl.prototype.exportPNG = function(cb){
 						}
 					}
 				})();
-				drawing.src = './' + this.decode[array[( i * 32) + j]] + '.png';
+				drawing.src = './images/' + this.decode[array[( i * 32) + j]] + '.png';
 			}
 		}
 	}
