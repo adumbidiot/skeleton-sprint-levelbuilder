@@ -146,10 +146,15 @@ window.lvl.prototype.render = function(index, blockType){
 	target.block = blockType;
 
     if(blockType == 'mask_circle') return;
+	
+	var blockSrc = './images/' + blockType + '.png';
+	if(blockType.startsWith('Note:')){
+		blockSrc = './images/note.png';
+	}
 
 	var block = document.createElement('img');
 	block.style.cssText = 'width: 25px; height: 25px;';
-	block.src = './images/' + blockType + '.png';
+	block.src = blockSrc;
 	block.type = 'block';
 	target.appendChild(block);
 	this.shadowIndex = null;
@@ -265,7 +270,11 @@ lvl.prototype.export1D = function(){
 	for(var i = 0; i != (32 * 18); i++){
 		var element = document.getElementById(this.name + (i + 1));
 		var id = element.block || 'null';
-		array.push(this.encode[id]);
+		let data = this.encode[id];
+		if(!data && id.startsWith('Note:')){
+			data = id;
+		}
+		array.push(data);
 	}
 	return array;
 }
@@ -383,7 +392,16 @@ lvl.prototype.importLBL = function(data){
 
 //TODO: Rename/Remove
 lvl.prototype.import = function(raw){
-	var call = 'var x = 0; var lvlArray = []; lvlArray[x] = []; for(var i = 0; i != 999; i++){lvlArray.push([]);} with(' + JSON.stringify(this.decode) + '){' + raw + '} return lvlArray;';
+	var call = 'var x = ' + (parseInt(raw.substr(9, 1)) || 0) + ';' +
+				'var lvlArray = [];' + 
+				'lvlArray[x] = [];' +
+				'for(var i = 0; i != 999; i++){' + 
+					'lvlArray.push([]);' +
+				'} ' + 
+				'with(' + JSON.stringify(this.decode) + '){' +
+					raw + 
+				'} ' + 
+				'return lvlArray;';
 	var interpret = new Function(call);
 	var out = interpret();
 	var final = [];

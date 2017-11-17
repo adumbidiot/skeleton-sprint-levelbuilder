@@ -1,0 +1,34 @@
+[
+	{
+		"name": "logo",
+		"path": "./images/icon.ico"
+	},
+	{
+		"name": "block",
+		"path": "./images/block.png"
+	},
+	{
+		"name": "block_key",
+		"path": "./images/block_key.png"
+	},
+	{
+		"name": "decoration_scaffold",
+		"path": "./images/decoration_scaffold.png"
+	},
+	{
+		"name": "decoration_sconce",
+		"path": "./images/decoration_sconce.png"
+	},
+	{
+		"name": "exit",
+		"path": "./images/exit.png"
+	},
+	{
+		"name": "main",
+		"path": "./images/main.png"
+	},
+	{
+		"name": "cobble_bg",
+		"path": "./images/cobble_bg.png"
+	}
+]

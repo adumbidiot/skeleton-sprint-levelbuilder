@@ -110,6 +110,9 @@
 				exportWindow.steam.loading.spinner.container = document.getElementById('export-steam-loading-spinner-container');
 				exportWindow.steam.loading.button = document.getElementById('export-steam-loading-button');
 				exportWindow.steam.loading.button.container = document.getElementById('export-steam-loading-button-container');
+				exportWindow.lbl = document.getElementById('export-lbl');
+				exportWindow.lbl.titleBox = document.getElementById('export-lbl-title');
+				exportWindow.lbl.button = document.getElementById('export-lbl-button');
 				
 				if(!steam){
 					exportWindow.steam.button.setAttribute('disabled', '');
@@ -135,12 +138,29 @@
 					exportWindow.steam.close();
 					exportWindow.steam.loading.close();
 					exportWindow.dev.close();
+					exportWindow.lbl.close();
 				}
 				
 				exportWindow.dev.saveFile = function(){
 					let num = exportWindow.dev.num.value || 'x';
 					let data = level.exportDev(num);
 					remote.dialog.showSaveDialog({defaultPath: srcDir + '/' + exportWindow.dev.titleBox.value + '.txt'}, function(path){
+						if(path){
+							fs.writeFile(path, data, function(err){
+								if(err){
+									throw err; //TODO: Handle errors
+								}else{
+									console.log("File Saved!");
+									exportWindow.closeAll();
+								}
+							});
+						}
+					});
+				}
+				
+				exportWindow.lbl.saveFile = function(){
+					let data = level.exportLBL();
+					remote.dialog.showSaveDialog({defaultPath: srcDir + '/' + exportWindow.lbl.titleBox.value + '.txt'}, function(path){
 						if(path){
 							fs.writeFile(path, data, function(err){
 								if(err){
@@ -321,6 +341,17 @@
 					<h1>Export Options</h1>
 					<paper-button raised onclick="exportWindow.steam.open()" id="export-steam-button">Steam Workshop</paper-button>
 					<paper-button raised onclick="exportWindow.dev.open()" id="export-dev-button">Dev Export</paper-button>
+					<paper-button raised onclick="exportWindow.lbl.open()" id="export-lbl-button">Line by Line Export</paper-button>
+				</div>
+			</paper-dialog>
+			<paper-dialog modal id="export-lbl" style="width:100%; height:100%; top:0px;">
+				<div>
+					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
+				</div>
+				<div style="padding-top: 10px;">
+					<h1>Line by Line Export</h1>
+					<paper-input label="Level Title" id="export-lbl-title" value="myLevel"></paper-input>
+					<paper-button raised style="width: 100px;" onclick="exportWindow.lbl.saveFile()">Save</paper-button>
 				</div>
 			</paper-dialog>
 			<paper-dialog modal id="export-dev" style="width:100%; height:100%; top:0px;">
