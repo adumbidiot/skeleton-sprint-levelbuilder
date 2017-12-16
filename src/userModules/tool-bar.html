@@ -1,4 +1,5 @@
 <link rel="import"  href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
 
 <dom-module id="tool-bar">
     <template>
@@ -50,14 +51,14 @@
                 top:350px;
                 left:0px;
             }
-            #exit{
-                top:50px;
-                right:0px;  
-            }
             #powerupburrow{
                 top:0px;
                 right:50px;
             }
+			#poweruprecall{
+				left: 0px;
+				bottom: 0px;
+			}
             #onewaywalldown{
                 top:50px;
                 right:50px;
@@ -90,18 +91,22 @@
 				top: 400px;
 				right:50px;	
 			}
-            #main{
-                top:0px;
+			#note{
+				top:0px;
                 right:0px;
+			}
+            #main{
+                top:50px;
+                right:0px; 
             }
-            #delete{
+			#exit{
                 top:100px;
                 right:0px;
             }
-			#poweruprecall{
-				left: 0px;
-				bottom: 0px;
-			}
+            #delete{
+                top:150px;
+                right:0px;
+            }
         </style>
 	    <div id="container" on-click="clickblock" on-dragstart="dragstartblock">
 			<img src="./images/block.png" id = "block" alt = "block" class="block"/>
@@ -112,7 +117,7 @@
 			<img src="./images/toggleblocksolid.png" id = "toggleblocksolid" alt = "toggleblocksolid" class="block"/>
 			<img src="./images/toggleblockphase.png" id = "toggleblockphase" alt = "toggleblockphase" class="block"/>
 			<img src="./images/switch.png" id = "switch" alt = "switch" class="block"/>
-			<img src="./images/exit.png" id = "exit" alt = "exit" class="block"/>
+			<img src="./images/poweruprecall.png" id = "poweruprecall" alt = "poweruprecall" class="block"/>
 			<img src="./images/powerupburrow.png" id = "powerupburrow" alt = "powerupburrow" class="block"/>
             <img src="./images/onewaywalldown.png" id = "onewaywalldown" alt = "onewaywalldown" class="block"/>
 		    <img src="./images/onewaywallleft.png" id = "onewaywallleft" alt = "onewaywallleft" class="block"/>
@@ -122,32 +127,71 @@
 			<img src="./images/pipe_out.png" id = "pipe_out" alt = "pipe_out" class="block"/>
 			<img src="./images/pipe_phase.png" id = "pipe_phase" alt = "pipe_phase" class="block"/>
 			<img src="./images/pipe_solid.png" id = "pipe_solid" alt = "pipe_solid" class="block"/>
+			<img src="./images/note.png" id="note" alt="note" class="block"/>
             <img src="./images/main.png" id = "main" alt = "main" class="block"/>
-			<img src="./images/poweruprecall.png" id = "poweruprecall" alt = "poweruprecall" class="block"/>
+			<img src="./images/exit.png" id = "exit" alt = "exit" class="block"/>
 			<img src="./images/delete.png" id = "delete" alt = "delete" class="block"/>
 		</div>
+		<paper-dialog id="noteDialog" modal>
+			<div>
+				<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" on-click="closeNoteDialog"></paper-icon-button>
+			</div>
+			<div style="padding-top: 10px;">
+				<h1>Note Content</h1>
+				<paper-input label="Note Content" id="note-content"></paper-input>
+				<paper-button raised style="width: 100px;" on-click="okNoteDialog">Ok</paper-button>
+			</div>
+		</paper-dialog>
     </template>
 
     <script>
     
     class ToolBar extends Polymer.Element {
         static get is() { 
-            return "tool-bar"; 
+            return "tool-bar"; //Just in case i forget
         }
         
         constructor(){
             super();
-			window.addEventListener('keydown', this.keyPressHandler.bind(this));  
+			window.addEventListener('keydown', this.keyPressHandler.bind(this));  //I hate "this"
         }
-        
+		openNoteDialog(){
+			this.$['noteDialog'].open();
+		}
+		closeNoteDialog(){
+			this.$['noteDialog'].close();
+		}
+		getNoteDialogContents(){
+			return this.$['note-content'].value;
+		}
+		clearNoteDialog(){
+			this.$['note-content'].value = '';
+		}
+		okNoteDialog(){
+			let id = "Note: " + this.getNoteDialogContents();
+			this.closeNoteDialog();
+			level.active = id;
+		}
         clickblock(event){
 			var id = event.target.id;
-			if(id == level.active){
+			if(id === 'container'){
+				return;
+			}
+			if(id === level.active){
 				id = null;
+			}
+			if(level.active && level.active.startsWith('Note:') && (id === 'note')){
+				id = null;
+			}
+			if((id !== null )&& (id === "note")){
+				this.openNoteDialog();
 			}
 			event.target.style.outline = "5px dotted powderblue";
             event.target.style.zIndex = "1";
 			if(level.active){
+				if(level.active.startsWith('Note:')){
+					level.active = 'note';
+				}
                 var currentActiveBlock = this.$[level.active];
                 currentActiveBlock.style.outline = '0px';
                 currentActiveBlock.style.zIndex = '0';
@@ -157,7 +201,7 @@
 
 		dragstartblock(event){
 			event.target.click();
-			event.preventDefault();
+			event.preventDefault(); //In Soviet Russia you dont drag block. BLOCK DRAG YOU
 		}
 		
 		keyPressHandler(event){
@@ -188,7 +232,6 @@
 		}
     
     }
-
     customElements.define(ToolBar.is, ToolBar);
 				
   </script>

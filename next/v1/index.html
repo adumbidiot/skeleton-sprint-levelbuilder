@@ -1,0 +1,16 @@
+<html>
+	<head>
+		<title>Level Builder</title>
+		<script src="levelbuilder.js"></script>
+	</head>
+	<body>
+		<div style="width: 1080px">
+			<canvas width="1600" height="900" style="width: 800px; height: 450px; float:left;" id="primary-output-area"></canvas>
+			<div id="toolbar-parent-area" style="float: left">
+		</div>
+		</div>
+		<script>
+			let builder = new LevelBuilder('primary-output-area', 'assets.json', 'toolbar-parent-area');
+		</script>
+	</body>
+</html>
