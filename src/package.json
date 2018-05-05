@@ -36,6 +36,7 @@
     "electron-rebuild": "^1.6.0"
   },
   "dependencies": {
-    "greenworks": "git+https://github.com/greenheartgames/greenworks.git"
+    "greenworks": "git+https://github.com/greenheartgames/greenworks.git",
+    "hoek": "^5.0.3"
   }
 }
