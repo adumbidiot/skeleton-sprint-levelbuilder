@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "test": "electron .",
-	"build": "electron-builder build -w"
+    "build": "electron-builder build -w"
   },
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
     "builder"
   ],
   "author": "adumbidiot",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder/issues"
   },
@@ -30,13 +30,15 @@
     }
   },
   "devDependencies": {
-	"electron": "^5.0.0",
-	"electron-builder": "19.29.2",
-	"electron-rebuild": "1.6.0"
+    "electron": "^5.0.1",
+    "electron-builder": "^20.0.0",
+    "electron-rebuild": "1.6.0"
   },
   "dependencies": {
+    "ajv": "^6.10.2",
     "greenworks": "git+https://github.com/greenheartgames/greenworks.git#ac155afecc2c4edbc00bd1c81514ae1ad5e04496",
     "hoek": "5.0.3",
-    "nan": "^2.0.0"
+    "nan": "^2.0.0",
+    "@hapi/cryptiles": ">=4.1.2"
   }
 }
