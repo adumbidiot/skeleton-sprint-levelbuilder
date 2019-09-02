@@ -4,7 +4,7 @@
   "description": "levelbuilder for skeleton sprint",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "electron ."
   },
   "repository": {
     "type": "git",
@@ -16,16 +16,12 @@
     "level",
     "builder"
   ],
-  "author": "nano",
+  "author": "adumbidiot",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder/issues"
   },
   "homepage": "https://github.com/adumbidiot/skeleton-sprint-levelbuilder#readme",
-  "dev-dependencies": {
-    "electron": "^1.7.9",
-    "electron-builder": "^19.29.2"
-  },
   "build": {
     "win": {
       "target": "portable",
@@ -33,10 +29,13 @@
     }
   },
   "devDependencies": {
-    "electron-rebuild": "^1.6.0"
+    "electron": "^1.7.9",
+    "electron-builder": "19.29.2",
+    "electron-rebuild": "1.6.0"
   },
   "dependencies": {
-    "greenworks": "git+https://github.com/greenheartgames/greenworks.git",
-    "hoek": "^5.0.3"
+    "greenworks": "git+https://github.com/greenheartgames/greenworks.git#ac155afecc2c4edbc00bd1c81514ae1ad5e04496",
+    "hoek": "5.0.3",
+    "nan": "^2.0.0"
   }
 }

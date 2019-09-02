@@ -21,7 +21,17 @@
         
 		<script>
 			//Electron code
-			const greenworks = require('greenworks');
+			let greenworks;
+			try {
+				greenworks = require('greenworks');
+			}catch(e) {
+				console.error('greenworks error');
+				greenworks = {
+					initAPI: function(){
+						return false;
+					}
+				};
+			}
 			const path = require('path');
 			const process = require('process');
 			const remote = require('electron').remote;
