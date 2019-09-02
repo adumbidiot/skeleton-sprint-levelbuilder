@@ -11,13 +11,21 @@ global.path = app.getPath('userData');
 let mainWindow;
 
 function createWindow(){
-    mainWindow = new BrowserWindow({width: 1920, height: 1080});
+    mainWindow = new BrowserWindow({
+			width: 1920, 
+			height: 1080, 
+			webPreferences: {
+				nodeIntegration: true,
+			},
+	});
+	
     mainWindow.loadURL(url.format({
             pathname: path.join(__dirname, 'index.html'),
             protocol: 'file',
             slashes: true  
         })
     );
+	
     mainWindow.on('closed', function(){
         mainWindow = null;
     });   
