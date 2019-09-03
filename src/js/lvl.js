@@ -18,76 +18,7 @@ window.lvl = function(name){
 	this.background.style.cssText = 'width: 800px; height: 450px; z-index: -1; position: absolute; top: 0px; left: 0px;';
 	
     this.history = [];
-
-	this.encode = {
-		main: 'X0',
-		block: 'B0',
-		block_key: 'BK',
-		exit: 'E0',
-		switch: 'S0',
-		switchceiling: 'S1',
-		toggleblocksolid: 'T0',
-		toggleblockphase: 'T1',
-		wirered: 'WR',
-		powerupburrow: 'P0',
-		poweruprecall: 'P1',
-		item_key: 'IK',
-		secretexit: 'E1',
-		decoration_scaffold: 'D0',
-		decoration_sconce: 'D1',
-		mask_circle: 'A0',
-        cobble_bg: 'M0',
-        waterfall_bg: 'M1',
-        skullfall_bg: 'M2',
-        concrete_bg: 'M3',
-        undefined1: 'M4',
-        undefined2: 'M5',
-        undefined3: 'M6',
-        onewaywallup: 'OU',
-        onewaywalldown: 'OD',
-        onewaywallleft: 'OL',
-        onewaywallright: 'OR',
-		pipe_in: 'CI',
-		pipe_out: 'CO',
-		pipe_phase: 'CP',
-		pipe_solid: 'CS',
-		null: '00'
-	}
 	
-	this.decode = {
-		'X0': 'main',
-		'B0': 'block',
-		'BK': 'block_key',
-		'E0': 'exit',
-		'S0': 'switch',
-		'S1': 'switchceiling',
-		'T0': 'toggleblocksolid',
-		'T1': 'toggleblockphase',
-		'WR': 'wirered',
-		'P0': 'powerupburrow' ,
-		'P1': 'poweruprecall',
-		'IK': 'item_key',
-		'E1': 'secretexit',
-		'D0': 'decoration_scaffold',
-		'D1': 'decoration_sconce',
-		'A0': 'mask_circle',
-        'M0': 'cobble_bg',
-        'M1': 'waterfall_bg',
-        'M2': 'skullfall_bg',
-        'M3': 'concrete_bg',
-        'M4': 'undefined1',
-        'M5': 'undefined2',
-        'M6': 'undefined3',
-        'OU': 'onewaywallup',
-        'OD': 'onewaywalldown',
-        'OL': 'onewaywallleft',
-        'OR': 'onewaywallright',
-		'CI': 'pipe_in',
-		'CO': 'pipe_out',
-		'CP': 'pipe_phase',
-		'CS': 'pipe_solid',
-		'00': 'null'
-	}
 	//Stupid js "this" crap
 	this.down = function(event){
 		self.renderEvent(event);
@@ -265,15 +196,12 @@ window.lvl.prototype.renderShadowEvent = function(event){
 	//this.renderShadow(index, this.active); //TODO: Fix shadow Rendering
 }
 
-lvl.prototype.export1D = function(){
+lvl.prototype.export1D = function(){	
 	var array = [];
 	for(var i = 0; i != (32 * 18); i++){
 		var element = document.getElementById(this.name + (i + 1));
 		var id = element.block || 'null';
-		let data = this.encode[id];
-		if(!data && id.startsWith('Note:')){
-			data = id;
-		}
+		let data = window.sks.encodeBlockLBL(id);
 		array.push(data);
 	}
 	return array;
@@ -305,7 +233,7 @@ lvl.prototype.exportPNG = function(cb){
 	for(var i = 0; i != 18; i++){
 		for(var j = 0; j != 32; j++){
 			var drawing = new Image();
-			if(this.decode[array[( i * 32) + j]] != 'null'){
+			if(window.sks.decodeBlockLBL(array[( i * 32) + j]) != 'null'){
 				count++;
 				total++;
 				drawing.onload = (function() {
@@ -321,7 +249,7 @@ lvl.prototype.exportPNG = function(cb){
 						}
 					}
 				})();
-				drawing.src = './images/' + this.decode[array[( i * 32) + j]] + '.png';
+				drawing.src = './images/' + window.sks.decodeBlockLBL(array[( i * 32) + j]) + '.png';
 			}
 		}
 	}
@@ -384,8 +312,10 @@ lvl.prototype.importArray1D = function(array){
 //Imports Line-by-Line representations of levels
 lvl.prototype.importLBL = function(data){
 	var array = data.split('\n');
+	console.log(array);
 	for(var i = 0; i != array.length; i++){
-		array[i] = this.decode[array[i]];	
+		let decoded = window.sks.decodeBlockLBL(array[i]);
+		array[i] = decoded;	
 	}
 	this.importArray1D(array);
 }
@@ -456,5 +386,3 @@ document.onkeyup = function(event){
     }
     checkCtrlZ();
 }
-
-

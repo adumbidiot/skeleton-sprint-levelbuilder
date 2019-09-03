@@ -1,0 +1,14 @@
+{
+  "name": "sks-neon",
+  "version": "0.0.1",
+  "description": "sks neon",
+  "main": "lib/index.js",
+  "author": "adumbidiot <nathaniel.daniel23@outlook.com>",
+  "license": "MIT",
+  "dependencies": {
+    "neon-cli": "^0.3.1"
+  },
+  "scripts": {
+    "install": "neon build"
+  }
+}

@@ -1,0 +1,17 @@
+[package]
+name = "sks-neon"
+version = "0.0.1"
+authors = ["adumbidiot <nathaniel.daniel23@outlook.com>"]
+license = "MIT"
+build = "build.rs"
+exclude = ["artifacts.json", "index.node"]
+
+[lib]
+name = "sks_neon"
+crate-type = ["dylib"]
+
+[build-dependencies]
+neon-build = "0.3.0"
+
+[dependencies]
+neon = "0.3.0"

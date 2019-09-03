@@ -5,7 +5,9 @@
   "main": "main.js",
   "scripts": {
     "test": "electron .",
-    "build": "electron-builder build -w"
+    "build": "electron-builder build -w",
+    "build:neon": "electron-build-env neon build sks-neon --release",
+    "postinstall": "electron-builder install-app-deps"
   },
   "repository": {
     "type": "git",
@@ -30,15 +32,18 @@
     }
   },
   "devDependencies": {
-    "electron": "^5.0.1",
+    "electron": "^3.1.8",
+    "electron-build-env": "^0.2.0",
     "electron-builder": "^20.0.0",
-    "electron-rebuild": "1.6.0"
+    "electron-rebuild": "1.6.0",
+    "neon-cli": "^0.3.1"
   },
   "dependencies": {
+    "@hapi/cryptiles": ">=4.1.2",
     "ajv": "^6.10.2",
     "greenworks": "git+https://github.com/greenheartgames/greenworks.git#ac155afecc2c4edbc00bd1c81514ae1ad5e04496",
     "hoek": "5.0.3",
-    "nan": "^2.0.0",
-    "@hapi/cryptiles": ">=4.1.2"
+    "nan": "^2.14.0",
+    "sks-neon": "file:native/sks-neon"
   }
 }
