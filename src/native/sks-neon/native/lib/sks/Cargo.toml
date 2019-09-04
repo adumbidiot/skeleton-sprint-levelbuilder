@@ -1,0 +1,11 @@
+[package]
+name = "sks"
+version = "0.0.1"
+authors = ["adumbidiot <nathaniel.daniel23@outlook.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ratel = { git = "https://github.com/ratel-rust/ratel-core", rev = "2e790b33d53755a1cc2d973bf833baebd2f9958b"}
+ratel-visitor = { git = "https://github.com/ratel-rust/ratel-core", rev = "2e790b33d53755a1cc2d973bf833baebd2f9958b"}

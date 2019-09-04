@@ -322,24 +322,7 @@ lvl.prototype.importLBL = function(data){
 
 //TODO: Rename/Remove
 lvl.prototype.import = function(raw){
-	var call = 'var x = ' + (parseInt(raw.substr(9, 1)) || 0) + ';' +
-				'var lvlArray = [];' + 
-				'lvlArray[x] = [];' +
-				'for(var i = 0; i != 999; i++){' + 
-					'lvlArray.push([]);' +
-				'} ' + 
-				'with(' + JSON.stringify(this.decode) + '){' +
-					raw + 
-				'} ' + 
-				'return lvlArray;';
-	var interpret = new Function(call);
-	var out = interpret();
-	var final = [];
-	out.forEach(function(item, index, array){
-		final = final.concat(item);
-	});
-	var array = [].concat.apply([], final);
-	this.importArray1D(array);
+	this.importArray1D(window.sks.decodeAS3(raw));
 }
 
 function checkCtrlZ(){

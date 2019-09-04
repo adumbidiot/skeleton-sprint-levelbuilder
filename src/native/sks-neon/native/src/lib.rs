@@ -1,7 +1,10 @@
 #[macro_use]
 extern crate neon;
+extern crate sks;
 
 use neon::prelude::*;
+use sks::*;
+use std::borrow::Cow;
 
 fn export_1d_patch(mut cx: FunctionContext) -> JsResult<JsString> {
     let v = cx.argument::<JsArray>(0)?;
@@ -60,67 +63,71 @@ fn encode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
+fn block_to_builder_internal(b: &Block) -> Cow<'static, str> {
+    match b {
+        Block::Block => "block".into(),
+        Block::Background {
+            background_type: BackgroundType::Cobble,
+        } => "cobble_bg".into(),
+        Block::Background {
+            background_type: BackgroundType::Waterfall,
+        } => "waterfall_bg".into(),
+        Block::Background {
+            background_type: BackgroundType::Skullfall,
+        } => "skullfall_bg".into(),
+        Block::Background {
+            background_type: BackgroundType::Concrete,
+        } => "concrete_bg".into(),
+        Block::Background {
+            background_type: BackgroundType::Reserved1,
+        } => "undefined1".into(),
+        Block::Background {
+            background_type: BackgroundType::Reserved2,
+        } => "undefined2".into(),
+        Block::Background {
+            background_type: BackgroundType::Reserved3,
+        } => "undefined3".into(),
+        Block::Dark => "mask_circle".into(),
+        Block::Empty => "null".into(),
+        Block::Exit => "exit".into(),
+        Block::Key => "item_key".into(),
+        Block::Lock => "block_key".into(),
+        Block::Note { text } => format!("Note:{}", text).into(),
+        Block::OneWayWall {
+            direction: Direction::Up,
+        } => "onewaywallup".into(),
+        Block::OneWayWall {
+            direction: Direction::Down,
+        } => "onewaywalldown".into(),
+        Block::OneWayWall {
+            direction: Direction::Left,
+        } => "onewaywallleft".into(),
+        Block::OneWayWall {
+            direction: Direction::Right,
+        } => "onewaywallright".into(),
+        Block::PipeIn => "pipe_in".into(),
+        Block::PipeOut => "pipe_out".into(),
+        Block::PipePhase => "pipe_phase".into(),
+        Block::PipeSolid => "pipe_solid".into(),
+        Block::Player => "main".into(),
+        Block::PowerUpBurrow => "powerupburrow".into(),
+        Block::PowerUpRecall => "poweruprecall".into(),
+        Block::SecretExit => "secretexit".into(),
+        Block::Scaffold => "decoration_scaffold".into(),
+        Block::Switch => "switch".into(),
+        Block::SwitchCeiling => "switchceiling".into(),
+        Block::ToggleBlock { solid: true } => "toggleblocksolid".into(),
+        Block::ToggleBlock { solid: false } => "toggleblockphase".into(),
+        Block::Torch => "decoration_sconce".into(),
+        Block::Wire => "wirered".into(),
+    }
+}
+
 /// Converts from lbl into the old levelbuilder's internal rep
 fn decode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     let data_str = cx.argument::<JsString>(0)?.value();
     match Block::from_lbl(&data_str) {
-        Some(b) => match b {
-            Block::Block => Ok(cx.string("block").upcast()),
-            Block::Background {
-                background_type: BackgroundType::Cobble,
-            } => Ok(cx.string("cobble_bg").upcast()),
-            Block::Background {
-                background_type: BackgroundType::Waterfall,
-            } => Ok(cx.string("waterfall_bg").upcast()),
-            Block::Background {
-                background_type: BackgroundType::Skullfall,
-            } => Ok(cx.string("skullfall_bg").upcast()),
-            Block::Background {
-                background_type: BackgroundType::Concrete,
-            } => Ok(cx.string("concrete_bg").upcast()),
-            Block::Background {
-                background_type: BackgroundType::Reserved1,
-            } => Ok(cx.string("undefined1").upcast()),
-            Block::Background {
-                background_type: BackgroundType::Reserved2,
-            } => Ok(cx.string("undefined2").upcast()),
-            Block::Background {
-                background_type: BackgroundType::Reserved3,
-            } => Ok(cx.string("undefined3").upcast()),
-			Block::Dark => Ok(cx.string("mask_circle").upcast()),
-            Block::Empty => Ok(cx.string("null").upcast()),
-            Block::Exit => Ok(cx.string("exit").upcast()),
-            Block::Key => Ok(cx.string("item_key").upcast()),
-            Block::Lock => Ok(cx.string("block_key").upcast()),
-            Block::Note { text } => Ok(cx.string(&format!("Note:{}", text)).upcast()),
-            Block::OneWayWall {
-                direction: Direction::Up,
-            } => Ok(cx.string("onewaywallup").upcast()),
-            Block::OneWayWall {
-                direction: Direction::Down,
-            } => Ok(cx.string("onewaywalldown").upcast()),
-            Block::OneWayWall {
-                direction: Direction::Left,
-            } => Ok(cx.string("onewaywallleft").upcast()),
-            Block::OneWayWall {
-                direction: Direction::Right,
-            } => Ok(cx.string("onewaywallright").upcast()),
-            Block::PipeIn => Ok(cx.string("pipe_in").upcast()),
-            Block::PipeOut => Ok(cx.string("pipe_out").upcast()),
-            Block::PipePhase => Ok(cx.string("pipe_phase").upcast()),
-            Block::PipeSolid => Ok(cx.string("pipe_solid").upcast()),
-            Block::Player => Ok(cx.string("main").upcast()),
-            Block::PowerUpBurrow => Ok(cx.string("powerupburrow").upcast()),
-            Block::PowerUpRecall => Ok(cx.string("poweruprecall").upcast()),
-			Block::SecretExit => Ok(cx.string("secretexit").upcast()),
-            Block::Scaffold => Ok(cx.string("decoration_scaffold").upcast()),
-            Block::Switch => Ok(cx.string("switch").upcast()),
-			Block::SwitchCeiling => Ok(cx.string("switchceiling").upcast()),
-            Block::ToggleBlock { solid: true } => Ok(cx.string("toggleblocksolid").upcast()),
-            Block::ToggleBlock { solid: false } => Ok(cx.string("toggleblockphase").upcast()),
-            Block::Torch => Ok(cx.string("decoration_sconce").upcast()),
-            Block::Wire => Ok(cx.string("wirered").upcast()),
-        },
+        Some(b) => Ok(cx.string(block_to_builder_internal(&b)).upcast()),
         None => {
             println!("[sks_rust::decode_block_lbl] Unknown: {}", &data_str);
             Ok(cx.null().upcast())
@@ -128,140 +135,27 @@ fn decode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
-#[derive(Debug)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
+fn decode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
+    let data_str = cx.argument::<JsString>(0)?.value();
+    let level = match sks::decode_as3(&data_str) {
+        Ok(data) => data,
+        Err(_) => return Ok(cx.null().upcast()),
+    };
 
-#[derive(Debug)]
-enum BackgroundType {
-    Cobble,
-    Waterfall,
-    Skullfall,
-    Concrete,
-    Reserved1,
-    Reserved2,
-    Reserved3,
-}
-
-#[derive(Debug)]
-enum Block {
-    Background { background_type: BackgroundType },
-    Block,
-    Dark,
-    Empty,
-    Exit,
-    Key,
-    Lock,
-    Note { text: String },
-    Scaffold,
-    SecretExit,
-    Switch,
-    SwitchCeiling,
-    OneWayWall { direction: Direction },
-    PipeIn,
-    PipeOut,
-    PipePhase,
-    PipeSolid,
-    Player,
-    PowerUpBurrow,
-    PowerUpRecall,
-    ToggleBlock { solid: bool },
-    Torch,
-    Wire,
-}
-
-impl Block {
-    pub fn from_lbl(data: &str) -> Option<Block> {
-        match data {
-            "00" => Some(Block::Empty),
-            "A0" => Some(Block::Dark),
-            "B0" => Some(Block::Block),
-            "BK" => Some(Block::Lock),
-            "CI" => Some(Block::PipeIn),
-            "CO" => Some(Block::PipeOut),
-            "CP" => Some(Block::PipePhase),
-            "CS" => Some(Block::PipeSolid),
-            "D0" => Some(Block::Scaffold),
-            "D1" => Some(Block::Torch),
-            "E0" => Some(Block::Exit),
-            "E1" => Some(Block::SecretExit),
-            "IK" => Some(Block::Key),
-            "M0" => Some(Block::Background {
-                background_type: BackgroundType::Cobble,
-            }),
-            "M1" => Some(Block::Background {
-                background_type: BackgroundType::Waterfall,
-            }),
-            "M2" => Some(Block::Background {
-                background_type: BackgroundType::Skullfall,
-            }),
-            "M3" => Some(Block::Background {
-                background_type: BackgroundType::Concrete,
-            }),
-            "M4" => Some(Block::Background {
-                background_type: BackgroundType::Reserved1,
-            }),
-            "M5" => Some(Block::Background {
-                background_type: BackgroundType::Reserved2,
-            }),
-            "M6" => Some(Block::Background {
-                background_type: BackgroundType::Reserved3,
-            }),
-            "OD" => Some(Block::OneWayWall {
-                direction: Direction::Down,
-            }),
-            "OL" => Some(Block::OneWayWall {
-                direction: Direction::Left,
-            }),
-            "OR" => Some(Block::OneWayWall {
-                direction: Direction::Right,
-            }),
-            "OU" => Some(Block::OneWayWall {
-                direction: Direction::Up,
-            }),
-            "P0" => Some(Block::PowerUpBurrow),
-            "P1" => Some(Block::PowerUpRecall),
-            "S0" => Some(Block::Switch),
-            "S1" => Some(Block::SwitchCeiling),
-            "T0" => Some(Block::ToggleBlock { solid: true }),
-            "T1" => Some(Block::ToggleBlock { solid: false }),
-            "X0" => Some(Block::Player),
-            "WR" => Some(Block::Wire),
-            data => {
-                let note_prefix = "Note:";
-                if data.starts_with(note_prefix) {
-                    Some(Block::Note {
-                        text: String::from(&data[note_prefix.len()..]),
-                    })
-                } else {
-                    None
-                }
-            }
-        }
+    let js_array = JsArray::new(&mut cx, level.len() as u32);
+    for (i, block) in level.iter().enumerate() {
+        let data_str = block_to_builder_internal(&block);
+        let string = cx.string(data_str);
+        js_array.set(&mut cx, i as u32, string)?;
     }
-    /*
-    pub fn as_lbl(&self) -> &str {
-        match self {
-            Block::Block => "B0",
-            Block::Empty => "00",
-            Block::Exit => "E0",
-            Block::Switch => "S0",
-            Block::Player => "X0",
-            Block::ToggleBlock {solid: true} => "T0",
-            Block::ToggleBlock {solid: false} => "T1",
-            Block::Torch => "D1",
-        }
-    }
-    */
+
+    Ok(js_array.upcast())
 }
 
 register_module!(mut cx, {
     cx.export_function("hello", hello)?;
     cx.export_function("export1DPatch", export_1d_patch)?;
     cx.export_function("encodeBlockLBL", encode_block_lbl)?;
-    cx.export_function("decodeBlockLBL", decode_block_lbl)
+    cx.export_function("decodeBlockLBL", decode_block_lbl)?;
+    cx.export_function("decodeAS3", decode_as3)
 });
