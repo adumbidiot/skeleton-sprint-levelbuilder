@@ -13,13 +13,20 @@ window.lvl = function(name){
 	this.board.id = this.name;
 	this.board.style.cssText = 'width: 800px; height: 450px; position: relative';
 	
-	this.background = document.createElement('img');
-	this.background.src = './images/background.png';
+	this.background = document.createElement('canvas');
+	this.background.width = 1920;
+	this.background.height = 1080;
 	this.background.style.cssText = 'width: 800px; height: 450px; z-index: -1; position: absolute; top: 0px; left: 0px;';
+	this.bgCtx = this.background.getContext('2d');
 	
-	
+	this.levelBuilder = new window.sks.LevelBuilder();
+	console.log(this.levelBuilder);
 	
 	let loopFunc = function(){
+		if(self.levelBuilder.isDirty()){
+			//TODO: Clear Canvas
+			self.levelBuilder.drawImage(self.bgCtx);
+		}
 		requestAnimationFrame(loopFunc);
 	}
 	

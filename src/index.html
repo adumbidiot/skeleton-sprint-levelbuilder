@@ -16,16 +16,19 @@
 		<link rel="import" href="./bower_components/iron-icons/iron-icons.html">
 		<link rel="import" href="./bower_components/paper-spinner/paper-spinner-lite.html">
 		
+		<script>
+			const sks = require('sks-neon');
+			window.sks = sks;
+		</script>
 		<script src="./js/lvl.js"></script>
 		<script src="./js/popupManager.js"></script>
-		
 		<script>
 			//Electron code
 			let greenworks;
 			try {
 				greenworks = require('greenworks');
 			}catch(e) {
-				console.error('greenworks error');
+				console.error('Greenworks dll error');
 				greenworks = {
 					initAPI: function(){
 						return false;
@@ -39,9 +42,6 @@
 			console.log('srcDir: ' + srcDir);
 			process.activateUvLoop();
 			const fs = require('fs');
-			
-			const sks = require('sks-neon');
-			window.sks = sks;
 			
 			window.onerror = function (errorMsg, url, lineNumber) {
 			   alert(errorMsg + lineNumber);
@@ -290,6 +290,7 @@
 			level.ondarkchange = function(value){
 				darkbox.checked = value;
 			}
+			
 			/*var resizeTarget;
 			function startResize(e){
 				window.addEventListener('mousemove', resize, false);

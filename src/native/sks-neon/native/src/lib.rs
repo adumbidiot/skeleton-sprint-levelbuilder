@@ -2,9 +2,10 @@
 extern crate neon;
 extern crate sks;
 
+mod util;
+
 use neon::prelude::*;
 use sks::*;
-use std::borrow::Cow;
 
 fn export_1d_patch(mut cx: FunctionContext) -> JsResult<JsString> {
     let v = cx.argument::<JsArray>(0)?;
@@ -63,72 +64,11 @@ fn encode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
-/// Converts a block into the old lvlbuilder rep
-fn block_to_builder_internal(b: &Block) -> Cow<'static, str> {
-    match b {
-        Block::Block => "block".into(),
-        Block::Background {
-            background_type: BackgroundType::Cobble,
-        } => "cobble_bg".into(),
-        Block::Background {
-            background_type: BackgroundType::Waterfall,
-        } => "waterfall_bg".into(),
-        Block::Background {
-            background_type: BackgroundType::Skullfall,
-        } => "skullfall_bg".into(),
-        Block::Background {
-            background_type: BackgroundType::Concrete,
-        } => "concrete_bg".into(),
-        Block::Background {
-            background_type: BackgroundType::Reserved1,
-        } => "undefined1".into(),
-        Block::Background {
-            background_type: BackgroundType::Reserved2,
-        } => "undefined2".into(),
-        Block::Background {
-            background_type: BackgroundType::Reserved3,
-        } => "undefined3".into(),
-        Block::Dark => "mask_circle".into(),
-        Block::Empty => "null".into(),
-        Block::Exit => "exit".into(),
-        Block::Key => "item_key".into(),
-        Block::Lock => "block_key".into(),
-        Block::Note { text } => format!("Note:{}", text).into(),
-        Block::OneWayWall {
-            direction: Direction::Up,
-        } => "onewaywallup".into(),
-        Block::OneWayWall {
-            direction: Direction::Down,
-        } => "onewaywalldown".into(),
-        Block::OneWayWall {
-            direction: Direction::Left,
-        } => "onewaywallleft".into(),
-        Block::OneWayWall {
-            direction: Direction::Right,
-        } => "onewaywallright".into(),
-        Block::PipeIn => "pipe_in".into(),
-        Block::PipeOut => "pipe_out".into(),
-        Block::PipePhase => "pipe_phase".into(),
-        Block::PipeSolid => "pipe_solid".into(),
-        Block::Player => "main".into(),
-        Block::PowerUpBurrow => "powerupburrow".into(),
-        Block::PowerUpRecall => "poweruprecall".into(),
-        Block::SecretExit => "secretexit".into(),
-        Block::Scaffold => "decoration_scaffold".into(),
-        Block::Switch => "switch".into(),
-        Block::SwitchCeiling => "switchceiling".into(),
-        Block::ToggleBlock { solid: true } => "toggleblocksolid".into(),
-        Block::ToggleBlock { solid: false } => "toggleblockphase".into(),
-        Block::Torch => "decoration_sconce".into(),
-        Block::Wire => "wirered".into(),
-    }
-}
-
 /// Converts from lbl into the old levelbuilder's internal rep
 fn decode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     let data_str = cx.argument::<JsString>(0)?.value();
     match Block::from_lbl(&data_str) {
-        Some(b) => Ok(cx.string(block_to_builder_internal(&b)).upcast()),
+        Some(b) => Ok(cx.string(util::block_to_builder_internal(&b)).upcast()),
         None => {
             println!("[sks_rust::decode_block_lbl] Unknown: {}", &data_str);
             Ok(cx.null().upcast())
@@ -148,7 +88,7 @@ fn decode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let js_array = JsArray::new(&mut cx, level.len() as u32);
     for (i, block) in level.iter().enumerate() {
-        let data_str = block_to_builder_internal(&block);
+        let data_str = util::block_to_builder_internal(&block);
         let string = cx.string(data_str);
         js_array.set(&mut cx, i as u32, string)?;
     }
@@ -178,6 +118,49 @@ fn encode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
     Ok(cx.string(&output).upcast())
 }
 
+declare_types! {
+    pub class JsLevelBuilder for LevelBuilder {
+        init(mut cx) {
+            Ok(sks::LevelBuilder::new())
+        }
+
+        method getImage(mut cx) {
+            use std::convert::TryInto;
+
+            let this = cx.this();
+            let img_data = {
+                let guard = cx.lock();
+                let lvlbuilder = this.borrow(&guard);
+                lvlbuilder.render_image().to_rgba().into_raw()
+            };
+
+            let js_img = {
+                let mut js_img = JsArrayBuffer::new(&mut cx, img_data.len().try_into().unwrap())?;
+                let guard = cx.lock();
+                for (i, byte) in js_img.borrow_mut(&guard).as_mut_slice().iter_mut().enumerate() {
+                    *byte = img_data[i];
+                }
+
+                js_img
+            };
+
+            Ok(js_img.upcast())
+        }
+
+        /*
+        method add_block(mut cx) {
+            let this = cx.this();
+            let msg = {
+                let guard = cx.lock();
+                let block = this.borrow(&guard);
+            };
+
+            Ok(cx.null().upcast())
+        }
+        */
+    }
+}
+
 register_module!(mut cx, {
     cx.export_function("hello", hello)?;
     cx.export_function("export1DPatch", export_1d_patch)?;
@@ -186,5 +169,7 @@ register_module!(mut cx, {
     cx.export_function("decodeBlockLBL", decode_block_lbl)?;
 
     cx.export_function("encodeAS3", encode_as3)?;
-    cx.export_function("decodeAS3", decode_as3)
+    cx.export_function("decodeAS3", decode_as3)?;
+
+    cx.export_class::<JsLevelBuilder>("LevelBuilder")
 });

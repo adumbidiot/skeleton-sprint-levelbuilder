@@ -15,6 +15,8 @@ use std::borrow::Cow;
 pub const LEVEL_WIDTH: usize = 32;
 pub const LEVEL_HEIGHT: usize = 18;
 
+pub const M0_BG: &[u8] = include_bytes!("../assets/M0.png");
+
 pub type As3Result<T> = Result<T, As3Error>;
 
 #[derive(Debug)]
@@ -156,11 +158,47 @@ pub fn encode_as3(level: &str, data: &[Block]) -> String {
         })
 }
 
+pub struct LevelBuilder {
+    level_data: Vec<Block>,
+    is_dark: bool,
+    background: BackgroundType,
+}
+
+impl LevelBuilder {
+    pub fn new() -> Self {
+        LevelBuilder {
+            level_data: vec![Block::Empty; LEVEL_WIDTH * LEVEL_HEIGHT],
+            is_dark: false,
+            background: BackgroundType::Cobble,
+        }
+    }
+
+    pub fn add_block(&mut self, i: usize, block: Block) {
+        *self.level_data.get_mut(i).unwrap() = block;
+    }
+
+    pub fn render_image(&self) -> image::DynamicImage {
+        let mut img = match self.background {
+            BackgroundType::Cobble => image::load_from_memory(M0_BG).unwrap(),
+            _ => unimplemented!(),
+        }
+        .resize(1920, 1080, image::FilterType::Nearest); //TODO: Choose best filter; ,image::FilterType::CatmullRom
+
+        img
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
     fn it_works() {
+        let img = LevelBuilder::new().render_image();
+        img.save("test.png");
+    }
+
+    #[test]
+    fn as3_decode() {
         let file_data = std::fs::read_to_string("kitchen_sink_as3.txt").unwrap();
         let _data = decode_as3(&file_data).unwrap();
     }

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 /// The directions something could face
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Direction {
     Up,
     Down,
@@ -9,8 +9,8 @@ pub enum Direction {
     Right,
 }
 
-/// The types fo backgrounds
-#[derive(Debug)]
+/// The types for backgrounds
+#[derive(Debug, Clone, PartialEq)]
 pub enum BackgroundType {
     Cobble,
     Waterfall,
@@ -23,7 +23,7 @@ pub enum BackgroundType {
 
 /// An entity that occupies a space in lbl representation.
 /// Also the internal rep  of a "block" in this library.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Block {
     Background { background_type: BackgroundType },
     Block,
