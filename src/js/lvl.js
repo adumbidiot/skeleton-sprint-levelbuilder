@@ -17,6 +17,14 @@ window.lvl = function(name){
 	this.background.src = './images/background.png';
 	this.background.style.cssText = 'width: 800px; height: 450px; z-index: -1; position: absolute; top: 0px; left: 0px;';
 	
+	
+	
+	let loopFunc = function(){
+		requestAnimationFrame(loopFunc);
+	}
+	
+	requestAnimationFrame(loopFunc);
+	
     this.history = [];
 	
 	//Stupid js "this" crap
@@ -196,15 +204,17 @@ window.lvl.prototype.renderShadowEvent = function(event){
 	//this.renderShadow(index, this.active); //TODO: Fix shadow Rendering
 }
 
-lvl.prototype.export1D = function(){	
+lvl.prototype.getLevelBuilderData = function(){
 	var array = [];
 	for(var i = 0; i != (32 * 18); i++){
 		var element = document.getElementById(this.name + (i + 1));
-		var id = element.block || 'null';
-		let data = window.sks.encodeBlockLBL(id);
-		array.push(data);
+		array.push(element.block || 'null');
 	}
 	return array;
+}
+
+lvl.prototype.export1D = function(){
+	return this.getLevelBuilderData().map(window.sks.encodeBlockLBL);
 }
 
 lvl.prototype.exportLBL = function(){
@@ -249,7 +259,7 @@ lvl.prototype.exportPNG = function(cb){
 						}
 					}
 				})();
-				drawing.src = './images/' + window.sks.decodeBlockLBL(array[( i * 32) + j]) + '.png';
+				drawing.src = './images/' + window.sks.decodeBlockLBL(array[(i * 32) + j]) + '.png';
 			}
 		}
 	}
@@ -262,38 +272,9 @@ lvl.prototype.exportPNG = function(cb){
 lvl.prototype.exportDev = function(num){
 	num = num || 'x';
 	var array = this.export1D();
-	var array2D = [];
-	for(var i = 0; i != (32 * 18); i += 32){
-		var subArray = [];
-		for(var j = 0; j != 32; j++){
-			subArray.push(array[i+j]);
-		}
-		array2D.push(subArray);
-	}
-	var output = '';
-	for(var i = 0; i != 18; i++){
-		output += 'lvlArray['+ num +']['+ i + '] = [' + array2D[i].toString() + '];\n';
-	}
-	return output;
+	return window.sks.encodeAS3(num, array);
 }
 
-//TODO: Simplify/Rename/Remove
-lvl.prototype.export = function(){
-	var array = this.export1D();
-	var array2D = [];
-	for(var i = 0; i != (32 * 18); i += 32){
-		var subArray = [];
-		for(var j = 0; j != 32; j++){
-			subArray.push(array[i+j]);
-		}
-		array2D.push(subArray);
-	}
-	var output = '';
-	for(var i = 0; i != 18; i++){
-		output += 'lvlArray[x]['+ i + '] = [' + array2D[i].toString() + '];\n';
-	}
-	return output;	
-}
 //TODO: FIX/remove
 lvl.prototype.import1D = function(data){
 	var array = data.slice(',');
@@ -322,7 +303,10 @@ lvl.prototype.importLBL = function(data){
 
 //TODO: Rename/Remove
 lvl.prototype.import = function(raw){
-	this.importArray1D(window.sks.decodeAS3(raw));
+	console.log(raw);
+	let data = window.sks.decodeAS3(raw);
+	console.log(data);
+	this.importArray1D(data);
 }
 
 function checkCtrlZ(){

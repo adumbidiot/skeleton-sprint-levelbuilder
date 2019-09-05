@@ -3,7 +3,6 @@ mod block;
 pub use block::BackgroundType;
 pub use block::Block;
 pub use block::Direction;
-
 use ratel::ast::expression::BinaryExpression;
 use ratel::ast::expression::Expression;
 use ratel::ast::Expression::Literal as ExprLiteral;
@@ -11,31 +10,16 @@ use ratel::ast::ExpressionNode;
 use ratel::ast::Literal;
 use ratel_visitor::Visitable;
 use ratel_visitor::Visitor;
+use std::borrow::Cow;
 
 pub const LEVEL_WIDTH: usize = 32;
 pub const LEVEL_HEIGHT: usize = 18;
-
-impl Block {
-    pub fn as_lbl(&self) -> &str {
-        match self {
-            Block::Block => "B0",
-            Block::Empty => "00",
-            Block::Exit => "E0",
-            Block::Switch => "S0",
-            Block::Player => "X0",
-            Block::ToggleBlock { solid: true } => "T0",
-            Block::ToggleBlock { solid: false } => "T1",
-            Block::Torch => "D1",
-            _ => unimplemented!(),
-        }
-    }
-}
 
 pub type As3Result<T> = Result<T, As3Error>;
 
 #[derive(Debug)]
 pub enum As3Error {
-    InvalidLBL,
+    InvalidLBL(String),
     InvalidLevelSize,
     Generic(&'static str),
 }
@@ -47,25 +31,23 @@ struct LevelArrayVisitor {
 }
 
 impl LevelArrayVisitor {
-    fn validate_left_expr(&mut self, expr: Expression) -> bool {
+    fn validate_left_expr(&mut self, expr: Expression) -> As3Result<()> {
         if let Expression::ComputedMember(expr) = expr {
             if let Expression::ComputedMember(inner_expr) = expr.object.item {
                 if let Expression::Identifier("lvlArray") = inner_expr.object.item {
-                    if let ExprLiteral(Literal::Number(level)) = inner_expr.property.item {
-                        if let ExprLiteral(Literal::Number(row)) = expr.property.item {
-                            if row
-                                .parse::<usize>()
-                                .map(|el| el == self.count)
-                                .unwrap_or(false)
-                            {
-                                return true;
-                            }
+                    if let ExprLiteral(Literal::Number(row)) = expr.property.item {
+                        if row
+                            .parse::<usize>()
+                            .map(|el| el == self.count)
+                            .unwrap_or(false)
+                        {
+                            return Ok(());
                         }
                     }
                 }
             }
         }
-        false
+        Err(As3Error::Generic("Left Parse"))
     }
 
     fn process_right(&mut self, expr: Expression) -> As3Result<()> {
@@ -79,7 +61,7 @@ impl LevelArrayVisitor {
                     _ => return Err(As3Error::Generic("Unknown Item type")),
                 };
 
-                let block = Block::from_lbl(data).ok_or(As3Error::InvalidLBL)?;
+                let block = Block::from_lbl(data).ok_or(As3Error::InvalidLBL(data.to_string()))?;
                 self.data.push(block);
 
                 i += 1;
@@ -128,8 +110,8 @@ impl<'ast> Visitor<'ast> for LevelArrayVisitor {
             return;
         }
 
-        if !self.validate_left_expr(**item.left) {
-            self.error = Some(As3Error::Generic("Left Parse"));
+        if let Err(e) = self.validate_left_expr(**item.left) {
+            self.error = Some(e);
         }
 
         if let Err(e) = self.process_right(**item.right) {
@@ -143,6 +125,35 @@ pub fn decode_as3(data: &str) -> As3Result<Vec<Block>> {
     let mut visitor = LevelArrayVisitor::new();
     ast.visit_with(&mut visitor);
     visitor.get_data()
+}
+
+pub fn encode_as3(level: &str, data: &[Block]) -> String {
+    data.iter()
+        .enumerate()
+        .fold(String::new(), |mut out, (i, block)| {
+            if i % LEVEL_WIDTH == 0 {
+                out += &format!("lvlArray[{}][{}] = [", level, i / LEVEL_WIDTH);
+            }
+
+            match block {
+                Block::Note { .. } => {
+                    out += "\"";
+                    out += &block.as_lbl();
+                    out += "\"";
+                }
+                _ => {
+                    out += &block.as_lbl();
+                }
+            }
+
+            if i % LEVEL_WIDTH == LEVEL_WIDTH - 1 {
+                out += "];\n"
+            } else {
+                out += ", ";
+            }
+
+            out
+        })
 }
 
 #[cfg(test)]

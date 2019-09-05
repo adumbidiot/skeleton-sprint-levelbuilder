@@ -63,6 +63,7 @@ fn encode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
+/// Converts a block into the old lvlbuilder rep
 fn block_to_builder_internal(b: &Block) -> Cow<'static, str> {
     match b {
         Block::Block => "block".into(),
@@ -139,7 +140,10 @@ fn decode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
     let data_str = cx.argument::<JsString>(0)?.value();
     let level = match sks::decode_as3(&data_str) {
         Ok(data) => data,
-        Err(_) => return Ok(cx.null().upcast()),
+        Err(e) => {
+            println!("[sks::decode_as3] {:#?}", e);
+            return Ok(cx.null().upcast());
+        }
     };
 
     let js_array = JsArray::new(&mut cx, level.len() as u32);
@@ -152,10 +156,35 @@ fn decode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
     Ok(js_array.upcast())
 }
 
+fn encode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
+    let level_str = cx.argument::<JsString>(0)?.value();
+    let array: Option<Vec<Block>> = cx
+        .argument::<JsArray>(1)?
+        .to_vec(&mut cx)?
+        .iter()
+        .map(|el| {
+            el.downcast::<JsString>()
+                .ok()
+                .and_then(|el| Block::from_lbl(&el.value()))
+        })
+        .collect();
+
+    let array = match array {
+        Some(a) => a,
+        None => return Ok(cx.null().upcast()),
+    };
+
+    let output = sks::encode_as3(&level_str, &array);
+    Ok(cx.string(&output).upcast())
+}
+
 register_module!(mut cx, {
     cx.export_function("hello", hello)?;
     cx.export_function("export1DPatch", export_1d_patch)?;
+
     cx.export_function("encodeBlockLBL", encode_block_lbl)?;
     cx.export_function("decodeBlockLBL", decode_block_lbl)?;
+
+    cx.export_function("encodeAS3", encode_as3)?;
     cx.export_function("decodeAS3", decode_as3)
 });

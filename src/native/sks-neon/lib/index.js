@@ -9,4 +9,6 @@ module.exports.hello = addon.hello;
 
 module.exports.encodeBlockLBL = addon.encodeBlockLBL;
 module.exports.decodeBlockLBL = addon.decodeBlockLBL;
+
+module.exports.encodeAS3 = addon.encodeAS3;
 module.exports.decodeAS3 = addon.decodeAS3;

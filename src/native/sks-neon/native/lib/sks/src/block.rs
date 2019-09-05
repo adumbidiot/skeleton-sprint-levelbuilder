@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 /// The directions something could face
 #[derive(Debug)]
 pub enum Direction {
@@ -49,7 +51,7 @@ pub enum Block {
 }
 
 impl Block {
-    /// Decodes an lbl string to a block, if valid
+    /// Decodes an LBL string to a block, if valid
     pub fn from_lbl(data: &str) -> Option<Block> {
         match data {
             "00" => Some(Block::Empty),
@@ -116,6 +118,67 @@ impl Block {
                     None
                 }
             }
+        }
+    }
+
+    /// Produces the LBL encoding of a given block
+    pub fn as_lbl(&self) -> Cow<'static, str> {
+        match self {
+            Block::Background {
+                background_type: BackgroundType::Cobble,
+            } => "M0".into(),
+            Block::Background {
+                background_type: BackgroundType::Waterfall,
+            } => "M1".into(),
+            Block::Background {
+                background_type: BackgroundType::Skullfall,
+            } => "M2".into(),
+            Block::Background {
+                background_type: BackgroundType::Concrete,
+            } => "M3".into(),
+            Block::Background {
+                background_type: BackgroundType::Reserved1,
+            } => "M4".into(),
+            Block::Background {
+                background_type: BackgroundType::Reserved2,
+            } => "M5".into(),
+            Block::Background {
+                background_type: BackgroundType::Reserved3,
+            } => "M6".into(),
+            Block::Block => "B0".into(),
+            Block::Dark => "A0".into(),
+            Block::Empty => "00".into(),
+            Block::Exit => "E0".into(),
+            Block::Key => "IK".into(),
+            Block::Lock => "BK".into(),
+            Block::Note { text } => format!("Note:{}", text).into(),
+            Block::OneWayWall {
+                direction: Direction::Down,
+            } => "OD".into(),
+            Block::OneWayWall {
+                direction: Direction::Up,
+            } => "OU".into(),
+            Block::OneWayWall {
+                direction: Direction::Left,
+            } => "OL".into(),
+            Block::OneWayWall {
+                direction: Direction::Right,
+            } => "OR".into(),
+            Block::PipeIn => "CI".into(),
+            Block::PipeOut => "CO".into(),
+            Block::PipePhase => "CP".into(),
+            Block::PipeSolid => "CS".into(),
+            Block::Player => "X0".into(),
+            Block::PowerUpBurrow => "P0".into(),
+            Block::PowerUpRecall => "P1".into(),
+            Block::SecretExit => "E1".into(),
+            Block::Scaffold => "D0".into(),
+            Block::Switch => "S0".into(),
+            Block::SwitchCeiling => "S1".into(),
+            Block::ToggleBlock { solid: true } => "T0".into(),
+            Block::ToggleBlock { solid: false } => "T1".into(),
+            Block::Torch => "D1".into(),
+            Block::Wire => "WR".into(),
         }
     }
 }
