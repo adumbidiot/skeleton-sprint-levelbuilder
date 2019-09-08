@@ -130,7 +130,7 @@
 				darkbox = document.getElementById('dark');
 				gridbox = document.getElementById('gridbox');
 				darkbox.onchange = function(){
-					level.setDark(!level.setDarkdark);
+					level.setDark(!level.dark);
 				}
 				gridbox.onchange = function(){
 					if(gridbox.checked){
@@ -305,11 +305,6 @@
 				}
 				
 			}
-
-			function importlvl1D(){
-				var data = document.getElementById('interface').value;
-				level.import1D(data);
-			}
 			
 			/*window.ondragstart = function(){
 				return false;
@@ -433,6 +428,7 @@
 				</div>
 			</paper-dialog>
 		</div>
+		<!--
 		<div id="import-modal"></div>
 		<script>
 			window.importModal = new SksComponents.ImportModal({
@@ -440,7 +436,7 @@
 				props: {},
 			});
 		</script>
-		<!--
+		
 		<div id="import-modal-button"></div>
 		<script>
 			const importModalButton = new SksComponents.Button({

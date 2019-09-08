@@ -8,12 +8,8 @@ console.log(addon.export1DPatch(data));
 module.exports.hello = addon.hello;
 
 module.exports.encodeBlockLBL = addon.encodeBlockLBL;
-module.exports.decodeBlockLBL = addon.decodeBlockLBL;
 
-module.exports.encodeAS3 = addon.encodeAS3;
-module.exports.decodeAS3 = addon.decodeAS3;
-
-module.exports.decodeUnknown = addon.decodeUnknown;
+module.exports.decode = addon.decode;
 
 module.exports.LevelBuilder = class LevelBuilder {
 	constructor() {
@@ -34,6 +30,9 @@ module.exports.LevelBuilder = class LevelBuilder {
 		let binary = new Uint8ClampedArray(this.internal.getImage());
 		let imageData = new ImageData(binary, 1920, 1080);
 		ctx.putImageData(imageData, 0, 0);
+		
+		//for(var i = 0; i != 10; i++
+		
 		this.dirty = false;
 	}
 }

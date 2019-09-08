@@ -64,18 +64,6 @@ fn encode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
-/// Converts from lbl into the old levelbuilder's internal rep
-fn decode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let data_str = cx.argument::<JsString>(0)?.value();
-    match Block::from_lbl(&data_str) {
-        Some(b) => Ok(cx.string(util::block_to_builder_internal(&b)).upcast()),
-        None => {
-            println!("[sks_rust::decode_block_lbl] Unknown: {}", &data_str);
-            Ok(cx.null().upcast())
-        }
-    }
-}
-
 fn block_array_to_js_array<'a>(mut cx: FunctionContext<'a>, blocks: &[Block]) -> JsResult<'a, JsValue> {
 	let js_array = JsArray::new(&mut cx, blocks.len() as u32);
     for (i, block) in blocks.iter().enumerate() {
@@ -84,21 +72,6 @@ fn block_array_to_js_array<'a>(mut cx: FunctionContext<'a>, blocks: &[Block]) ->
         js_array.set(&mut cx, i as u32, string)?;
     }
 	Ok(js_array.upcast())
-}
-
-fn decode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let data_str = cx.argument::<JsString>(0)?.value();
-    let level = match sks::decode_as3(&data_str) {
-        Ok(data) => data,
-        Err(e) => {
-            println!("[sks::decode_as3] {:#?}", e);
-            return Ok(cx.null().upcast());
-        }
-    };
-
-    let js_array = block_array_to_js_array(cx, &level)?;
-
-    Ok(js_array.upcast())
 }
 
 fn encode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -123,7 +96,7 @@ fn encode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
     Ok(cx.string(&output).upcast())
 }
 
-fn decode_unknown(mut cx: FunctionContext) -> JsResult<JsValue>{
+fn decode_any(mut cx: FunctionContext) -> JsResult<JsValue>{
 	let raw = cx.argument::<JsString>(0)?.value();
 	let input = raw.trim();
 	
@@ -198,12 +171,9 @@ register_module!(mut cx, {
     cx.export_function("export1DPatch", export_1d_patch)?;
 
     cx.export_function("encodeBlockLBL", encode_block_lbl)?;
-    cx.export_function("decodeBlockLBL", decode_block_lbl)?;
-
     cx.export_function("encodeAS3", encode_as3)?;
-    cx.export_function("decodeAS3", decode_as3)?;
 	
-	cx.export_function("decodeUnknown", decode_unknown)?;
+	cx.export_function("decode", decode_any)?;
 
     cx.export_class::<JsLevelBuilder>("LevelBuilder")
 });

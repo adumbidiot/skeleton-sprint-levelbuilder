@@ -295,11 +295,6 @@ lvl.prototype.exportDev = function(num){
 	return window.sks.encodeAS3(num, array);
 }
 
-//TODO: FIX/remove
-lvl.prototype.import1D = function(data){
-	var array = data.slice(',');
-	this.importArray1D(array);
-}
 //Imports a 1D Array that has already been decoded
 lvl.prototype.importArray1D = function(array){
 	this.clearAllTiles();
@@ -308,30 +303,15 @@ lvl.prototype.importArray1D = function(array){
 			this.render(i, array[i]);
 		}
 	}
-	console.log(array);
-}
-//Imports Line-by-Line representations of levels
-lvl.prototype.importLBL = function(data){
-	var array = data.split('\n');
-	console.log(array);
-	for(var i = 0; i != array.length; i++){
-		let decoded = window.sks.decodeBlockLBL(array[i]);
-		array[i] = decoded;	
-	}
-	this.importArray1D(array);
 }
 
-lvl.prototype.importAS3 = function(data){
-	let arr = window.sks.decodeAS3(data);
-	this.importArray1D(arr);
-}
-
+// Guesses the import format and imports. Retuns true is sucessfull
 lvl.prototype.import = function(data){
-	let arr = window.sks.decodeUnknown(data);
+	let arr = window.sks.decode(data);
 	if(arr){
 		this.importArray1D(arr);
 		return true;
-	}else{
+	} else {
 		return false;
 	}
 }
