@@ -6,8 +6,10 @@
 	"scripts": {
 		"test": "electron .",
 		"build:neon": "electron-build-env neon build sks-neon --release",
+		"build:svelte": "rollup -c svelte/rollup.config.js",
 		"pack": "electron-packager . --overwrite --asar --prune=true --out=dist --icon=./images/icon.ico --ignore=\"target\" --ignore=\"native/sks-neon\"",
-		"rebuild": "electron-rebuild"
+		"rebuild": "electron-build-env electron-rebuild",
+		"watch:svelte": "rollup -c svelte/rollup.config.js -w"
 	},
 	"repository": {
 		"type": "git",
@@ -30,7 +32,11 @@
 		"electron-build-env": "^0.2.0",
 		"electron-packager": "^14.0.5",
 		"electron-rebuild": "1.6.0",
-		"neon-cli": "^0.3.0"
+		"neon-cli": "^0.3.0",
+		"rollup": "^1.20.3",
+		"rollup-plugin-node-resolve": "^5.2.0",
+		"rollup-plugin-svelte": "^5.1.0",
+		"svelte": "^3.9.2"
 	},
 	"dependencies": {
 		"greenworks": "git+https://github.com/greenheartgames/greenworks.git#ac155afecc2c4edbc00bd1c81514ae1ad5e04496",

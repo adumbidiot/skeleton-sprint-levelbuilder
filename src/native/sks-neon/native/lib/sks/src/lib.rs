@@ -69,7 +69,7 @@ impl LevelArrayVisitor {
                 i += 1;
             }
 
-            if i != 32 {
+            if i != LEVEL_WIDTH {
                 return Err(As3Error::InvalidLevelSize);
             }
 
@@ -158,6 +158,32 @@ pub fn encode_as3(level: &str, data: &[Block]) -> String {
         })
 }
 
+
+pub fn decode_lbl(data: &str) -> Option<Vec<Block>> {
+    data.lines().map(|s| Block::from_lbl(s)).collect()
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FileFormat {
+	LBL,
+	AS3,
+}
+
+pub fn guess_format(data: &str) -> Option<FileFormat> {
+	let mut iter = data.lines();
+	let first = iter.next()?;
+	
+	if Block::from_lbl(first).is_some() {
+		return Some(FileFormat::LBL);
+	}
+	
+	if first.starts_with("lvlArray"){
+		return Some(FileFormat::AS3);
+	}
+	
+	None
+}
+
 pub struct LevelBuilder {
     level_data: Vec<Block>,
     is_dark: bool,
@@ -179,10 +205,11 @@ impl LevelBuilder {
 
     pub fn render_image(&self) -> image::DynamicImage {
         let mut img = match self.background {
-            BackgroundType::Cobble => image::load_from_memory(M0_BG).unwrap(),
+            BackgroundType::Cobble => image::load_from_memory(M0_BG).unwrap(), //TODO: LAZY_STATIC
             _ => unimplemented!(),
         }
-        .resize(1920, 1080, image::FilterType::Nearest); //TODO: Choose best filter; ,image::FilterType::CatmullRom
+        .resize(1920, 1080, image::FilterType::Nearest);//TODO: Choose best filter; ,image::FilterType::CatmullRom
+														//TODO: Image Cache 
 
         img
     }

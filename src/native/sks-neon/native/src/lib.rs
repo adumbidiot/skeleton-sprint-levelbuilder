@@ -76,6 +76,16 @@ fn decode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
+fn block_array_to_js_array<'a>(mut cx: FunctionContext<'a>, blocks: &[Block]) -> JsResult<'a, JsValue> {
+	let js_array = JsArray::new(&mut cx, blocks.len() as u32);
+    for (i, block) in blocks.iter().enumerate() {
+        let data_str = util::block_to_builder_internal(&block);
+        let string = cx.string(data_str);
+        js_array.set(&mut cx, i as u32, string)?;
+    }
+	Ok(js_array.upcast())
+}
+
 fn decode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
     let data_str = cx.argument::<JsString>(0)?.value();
     let level = match sks::decode_as3(&data_str) {
@@ -86,12 +96,7 @@ fn decode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
         }
     };
 
-    let js_array = JsArray::new(&mut cx, level.len() as u32);
-    for (i, block) in level.iter().enumerate() {
-        let data_str = util::block_to_builder_internal(&block);
-        let string = cx.string(data_str);
-        js_array.set(&mut cx, i as u32, string)?;
-    }
+    let js_array = block_array_to_js_array(cx, &level)?;
 
     Ok(js_array.upcast())
 }
@@ -116,6 +121,33 @@ fn encode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let output = sks::encode_as3(&level_str, &array);
     Ok(cx.string(&output).upcast())
+}
+
+fn decode_unknown(mut cx: FunctionContext) -> JsResult<JsValue>{
+	let raw = cx.argument::<JsString>(0)?.value();
+	let input = raw.trim();
+	
+	let format = match sks::guess_format(input){
+		Some(f) => f,
+		None => return Ok(cx.null().upcast()),
+	};
+	
+	let level = match format {
+		sks::FileFormat::LBL => {
+			sks::decode_lbl(input)
+		},
+		sks::FileFormat::AS3 => {
+			sks::decode_as3(input).ok()
+		}
+	};
+	
+	let level = match level {
+		Some(blocks) => blocks,
+		None => return Ok(cx.null().upcast()),
+	};
+	
+	let js_array = block_array_to_js_array(cx, &level)?;
+	Ok(js_array.upcast())
 }
 
 declare_types! {
@@ -170,6 +202,8 @@ register_module!(mut cx, {
 
     cx.export_function("encodeAS3", encode_as3)?;
     cx.export_function("decodeAS3", decode_as3)?;
+	
+	cx.export_function("decodeUnknown", decode_unknown)?;
 
     cx.export_class::<JsLevelBuilder>("LevelBuilder")
 });

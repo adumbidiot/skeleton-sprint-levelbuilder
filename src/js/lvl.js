@@ -193,12 +193,25 @@ window.lvl.prototype.renderEvent = function(event){
 	}
 	
 	var index = Number(target.id.slice(this.name.length)) - 1;
-
-	if(event.button == 0){ //Left Click
-		this.render(index, this.active);
+	
+	if(event.type == "mousedown"){
+		if(event.button == 0){
+			this.render(index, this.active);
+		}
+		
+		if(event.button == 2){
+			this.render(index, "delete");
+		}
 	}
-	if(event.button == 2){ //Right Click
-		this.render(index, "delete");
+	
+	if(event.type == "mouseover"){
+		if(window.lvl.mouseDownRight){
+			this.render(index, this.active);
+		}
+		
+		if(window.lvl.mouseDownLeft){
+			this.render(index, "delete");
+		}
 	}
 }
 
@@ -308,12 +321,19 @@ lvl.prototype.importLBL = function(data){
 	this.importArray1D(array);
 }
 
-//TODO: Rename/Remove
-lvl.prototype.import = function(raw){
-	console.log(raw);
-	let data = window.sks.decodeAS3(raw);
-	console.log(data);
-	this.importArray1D(data);
+lvl.prototype.importAS3 = function(data){
+	let arr = window.sks.decodeAS3(data);
+	this.importArray1D(arr);
+}
+
+lvl.prototype.import = function(data){
+	let arr = window.sks.decodeUnknown(data);
+	if(arr){
+		this.importArray1D(arr);
+		return true;
+	}else{
+		return false;
+	}
 }
 
 function checkCtrlZ(){
@@ -326,12 +346,25 @@ function checkCtrlZ(){
 }
 
 window.lvl.mouseDown = false;
+window.lvl.mouseDownLeft = false;
+window.lvl.mouseDownRight = false;
+
 window.lvl.ctrlDown = false;
 window.lvl.zDown = false;
-document.onmousedown = function(){
+document.onmousedown = function(e){
+	if(e.button == 0){
+		window.lvl.mouseDownRight = true;
+	}else if(e.button == 2){
+		window.lvl.mouseDownLeft = true;
+	}
 	window.lvl.mouseDown = true;
 }
-document.onmouseup = function(){
+document.onmouseup = function(e){
+	if(e.button == 0){
+		window.lvl.mouseDownRight = false;
+	}else if(e.button == 2){
+		window.lvl.mouseDownLeft = false;
+	}
 	window.lvl.mouseDown = false;
 }
 document.onkeydown = function(event){

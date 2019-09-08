@@ -1,0 +1,113 @@
+<Modal bind:active={active}>
+	<div class="title-wrapper">
+		<h1 class="title">Import</h1>
+	</div>
+	<div class = "entry">
+		<Button on:click={loadLBL}>LBL File</Button>
+	</div>
+	<div>
+		<Button on:click={loadAny}>Any File (Guess format)</Button>
+	</div>
+	<div class = "entry">
+		<Button on:click={loadAS3}>AS3 Array File (Dev)</Button>
+	</div>
+	<div class="close">
+		<Button on:click="{deactivate}">Close</Button>
+	</div>
+</Modal>
+
+<style>
+.entry {
+	margin: 0.25rem 0rem;
+}
+
+.title-wrapper {
+	text-align: center;
+	background-color: red;
+	margin: 0rem 2rem;
+	border-radius: 0.25rem;
+	user-select: none;
+}
+
+.title {
+	text-align: center;
+	text-decoration: none;
+	font-weight: 100;
+}
+
+.close {
+	right: 0.5rem;
+	height: 1.5rem;
+	font-size: 1rem;
+	position: absolute;
+	bottom: 1rem;
+}
+</style>
+
+<script>
+	import Button from './Button.html';
+	import Modal from './Modal.html';
+	
+	export let active = false;
+	export function activate(){
+		active = true;
+	}
+	
+	export function deactivate(){
+		active = false;
+	}
+	
+	function loadAS3(){
+		getFilename()
+		.then((data) => {
+			window.level.importAS3(data);
+			deactivate();
+		})
+		.catch((e) => {
+			throw e;
+		});
+	}
+	
+	function loadLBL(){
+		getFilename()
+		.then((data) => {
+			window.level.importLBL(data);
+			deactivate();
+		})
+		.catch((e) => {
+			throw e;
+		});
+	}
+	
+	function loadAny(){
+		getFilename()
+		.then((data) => {
+			window.level.import(data);
+			deactivate();
+		})
+		.catch((e) => {
+			throw e;
+		});
+	}
+	
+	async function getFilename(){
+		let filename = await window.dialog.showOpenDialog();
+		if(!filename){
+			throw "No Dialog Data";
+		}
+		let data = await readFile(filename[0], 'utf8');
+		return data;
+	}
+	
+	function readFile(path, encoding){
+		return new Promise((resolve, reject) => {
+			window.fs.readFile(path, encoding, function(err, data){
+				if(err) {
+					reject(err);
+				} else {
+					resolve(data);
+				}
+			});
+		});
+	}
+</script>
