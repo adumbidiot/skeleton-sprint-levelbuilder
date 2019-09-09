@@ -2,11 +2,10 @@ window.lvl = function(name){
 	this.name = name;
 	this.dark = false;
 	this.active = null;
-	this.grid = true;
 	var self = this;
 	
 	this.gridTemplate = document.createElement('div');
-	this.gridTemplate.style.cssText = 'width: 25px; height: 25px; outline: 1px solid black; float: left;';
+	this.gridTemplate.style.cssText = 'width: 25px; height: 25px; float: left;';
 	this.gridTemplate.type = 'holder';
 	
 	this.board = document.createElement('div');
@@ -19,6 +18,12 @@ window.lvl = function(name){
 	this.background.style.cssText = 'width: 800px; height: 450px; z-index: -1; position: absolute; top: 0px; left: 0px;';
 	this.bgCtx = this.background.getContext('2d');
 	
+	this.gridCanvas = document.createElement('canvas');
+	this.gridCanvas.width = 1920;
+	this.gridCanvas.height = 1080;
+	this.gridCanvas.style.cssText = 'width: 800px; height: 450px; position: absolute; top: 0px; left: 0px; pointer-events: none;';
+	this.gridCtx = this.gridCanvas.getContext('2d');
+	
 	this.levelBuilder = new window.sks.LevelBuilder();
 	console.log(this.levelBuilder);
 	
@@ -26,6 +31,8 @@ window.lvl = function(name){
 		if(self.levelBuilder.isDirty()){
 			//TODO: Clear Canvas
 			self.levelBuilder.drawImage(self.bgCtx);
+			self.gridCtx.clearRect(0, 0, 1920, 1080);
+			self.levelBuilder.drawGrid(self.gridCtx);
 		}
 		requestAnimationFrame(loopFunc);
 	}
@@ -69,6 +76,7 @@ window.lvl.prototype.generateBoard = function(){
 		grid.addEventListener("click", this.click);
 	}
 	this.board.appendChild(this.background);
+	this.board.appendChild(this.gridCanvas);
 	return this.board;
 }
 //Renders a specified block at specified index
@@ -149,17 +157,11 @@ window.lvl.prototype.setDark = function(value){
 }
 //Disables grid on board
 window.lvl.prototype.disableGrid = function(){
-	this.grid = false;
-	for(var i = 0; i != (32 * 18); i++){
-		document.getElementById(this.name + (i+1)).style.outline = '0px';
-	}
+	this.levelBuilder.disableGrid();
 }
 //Enables grid
 window.lvl.prototype.enableGrid = function(){
-	this.grid = true;
-	for(var i = 0; i != (32 * 18); i++){
-		document.getElementById(this.name + (i+1)).style.outline = '1px solid black';
-	}
+	this.levelBuilder.enableGrid();
 }
 //Clears a tile at specified index
 window.lvl.prototype.clearTile = function(index){
