@@ -5,9 +5,9 @@
 		
 		<script src="./svelte/public/bundle.js"></script>
 	
-		<link rel="import" href="./userModules/export-level.html">
 		<link rel="import" href="./userModules/tool-bar.html">
 		
+		<link rel="import" href="./bower_components/paper-toggle-button/paper-toggle-button.html">
 		<link rel="import" href="./bower_components/paper-button/paper-button.html">
 		<link rel="import" href="./bower_components/paper-checkbox/paper-checkbox.html">
 		<link rel="import" href="./bower_components/paper-dialog/paper-dialog.html">
@@ -115,7 +115,7 @@
 				getFilename()
 				.then((data) => {
 					if(!window.level.import(data)){
-						alert("Failed to read file");
+						alert("Failed to load file");
 					}
 				})
 				.catch((e) => {
@@ -130,15 +130,15 @@
 				darkbox = document.getElementById('dark');
 				gridbox = document.getElementById('gridbox');
 				darkbox.onchange = function(){
-					level.setDark(!level.dark);
-				}
+					level.setDark(darkbox.checked);
+				};
 				gridbox.onchange = function(){
 					if(gridbox.checked){
 						level.enableGrid();
 					}else{
 						level.disableGrid();
 					}
-				}
+				};
 				
 				exportWindow.main = document.getElementById('export');
 				exportWindow.dev = document.getElementById('export-dev');
@@ -309,10 +309,6 @@
 			/*window.ondragstart = function(){
 				return false;
 			}*/
-		   
-			level.ondarkchange = function(value){
-				darkbox.checked = value;
-			}
 			
 			/*var resizeTarget;
 			function startResize(e){
@@ -365,10 +361,7 @@
 				<paper-button raised onclick="exportWindow.main.open()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
 				<paper-button raised onclick="openImportPopup()" class = "import" style="position:absolute; top:5px; height: 40px; left:125px;">Import</paper-button>
 				<paper-toggle-button id="gridbox" style="left: 225px;position:absolute;top:5px; height: 40px;" class="grid" checked>Enable Grid</paper-toggle-button>
-			</div>
-			<div style="outline:2px solid; width:800px; bottom:-40px; position:relative; background-color: white;">
-				Buggy ASF:
-				<input id="dark" type="checkbox">Dark
+				<paper-toggle-button id="dark" style="left: 360px;position:absolute;top:5px; height: 40px;" class="grid">Dark</paper-toggle-button>
 			</div>
 			<paper-dialog modal id="export">
 				<div>

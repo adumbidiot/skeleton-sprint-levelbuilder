@@ -1,15 +1,11 @@
+mod as3;
 mod block;
 
+pub use as3::decode_as3;
+pub use as3::encode_as3;
 pub use block::BackgroundType;
 pub use block::Block;
 pub use block::Direction;
-use ratel::ast::expression::BinaryExpression;
-use ratel::ast::expression::Expression;
-use ratel::ast::Expression::Literal as ExprLiteral;
-use ratel::ast::ExpressionNode;
-use ratel::ast::Literal;
-use ratel_visitor::Visitable;
-use ratel_visitor::Visitor;
 use std::borrow::Cow;
 
 pub const LEVEL_WIDTH: usize = 32;
@@ -17,171 +13,37 @@ pub const LEVEL_HEIGHT: usize = 18;
 
 pub const M0_BG: &[u8] = include_bytes!("../assets/M0.png");
 
-pub type As3Result<T> = Result<T, As3Error>;
-
-#[derive(Debug)]
-pub enum As3Error {
-    InvalidLBL(String),
-    InvalidLevelSize,
-    Generic(&'static str),
-}
-
-struct LevelArrayVisitor {
-    count: usize,
-    data: Vec<Block>,
-    error: Option<As3Error>,
-}
-
-impl LevelArrayVisitor {
-    fn validate_left_expr(&mut self, expr: Expression) -> As3Result<()> {
-        if let Expression::ComputedMember(expr) = expr {
-            if let Expression::ComputedMember(inner_expr) = expr.object.item {
-                if let Expression::Identifier("lvlArray") = inner_expr.object.item {
-                    if let ExprLiteral(Literal::Number(row)) = expr.property.item {
-                        if row
-                            .parse::<usize>()
-                            .map(|el| el == self.count)
-                            .unwrap_or(false)
-                        {
-                            return Ok(());
-                        }
-                    }
-                }
-            }
-        }
-        Err(As3Error::Generic("Left Parse"))
-    }
-
-    fn process_right(&mut self, expr: Expression) -> As3Result<()> {
-        if let Expression::Array(expr) = expr {
-            let mut i = 0;
-            for node in expr.body.iter() {
-                let data = match node.item {
-                    Expression::Identifier(data) => data,
-                    ExprLiteral(Literal::Number(data)) => data,
-                    ExprLiteral(Literal::String(data)) => data.trim_matches('"'),
-                    _ => return Err(As3Error::Generic("Unknown Item type")),
-                };
-
-                let block = Block::from_lbl(data).ok_or(As3Error::InvalidLBL(data.to_string()))?;
-                self.data.push(block);
-
-                i += 1;
-            }
-
-            if i != LEVEL_WIDTH {
-                return Err(As3Error::InvalidLevelSize);
-            }
-
-            self.count += 1;
-        } else {
-            return Err(As3Error::Generic("Invalid Expr Type"));
-        }
-
-        Ok(())
-    }
-
-    fn get_data(self) -> As3Result<Vec<Block>> {
-        if let Some(e) = self.error {
-            return Err(e);
-        }
-
-        if self.data.len() != LEVEL_WIDTH * LEVEL_HEIGHT {
-            return Err(As3Error::InvalidLevelSize);
-        }
-
-        Ok(self.data)
-    }
-
-    fn new() -> Self {
-        LevelArrayVisitor {
-            count: 0,
-            data: Vec::with_capacity(LEVEL_WIDTH * LEVEL_HEIGHT),
-            error: None,
-        }
-    }
-}
-
-impl<'ast> Visitor<'ast> for LevelArrayVisitor {
-    fn on_binary_expression(
-        &mut self,
-        item: &BinaryExpression<'ast>,
-        _node: &'ast ExpressionNode<'ast>,
-    ) {
-        if self.error.is_some() {
-            return;
-        }
-
-        if let Err(e) = self.validate_left_expr(**item.left) {
-            self.error = Some(e);
-        }
-
-        if let Err(e) = self.process_right(**item.right) {
-            self.error = Some(e);
-        }
-    }
-}
-
-pub fn decode_as3(data: &str) -> As3Result<Vec<Block>> {
-    let ast = ratel::parse(data).map_err(|_| As3Error::Generic("Invalid Parse"))?;
-    let mut visitor = LevelArrayVisitor::new();
-    ast.visit_with(&mut visitor);
-    visitor.get_data()
-}
-
-pub fn encode_as3(level: &str, data: &[Block]) -> String {
-    data.iter()
-        .enumerate()
-        .fold(String::new(), |mut out, (i, block)| {
-            if i % LEVEL_WIDTH == 0 {
-                out += &format!("lvlArray[{}][{}] = [", level, i / LEVEL_WIDTH);
-            }
-
-            match block {
-                Block::Note { .. } => {
-                    out += "\"";
-                    out += &block.as_lbl();
-                    out += "\"";
-                }
-                _ => {
-                    out += &block.as_lbl();
-                }
-            }
-
-            if i % LEVEL_WIDTH == LEVEL_WIDTH - 1 {
-                out += "];\n"
-            } else {
-                out += ", ";
-            }
-
-            out
-        })
-}
-
-
 pub fn decode_lbl(data: &str) -> Option<Vec<Block>> {
     data.lines().map(|s| Block::from_lbl(s)).collect()
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FileFormat {
-	LBL,
-	AS3,
+    LBL,
+    AS3,
 }
 
 pub fn guess_format(data: &str) -> Option<FileFormat> {
-	let mut iter = data.lines();
-	let first = iter.next()?;
-	
-	if Block::from_lbl(first).is_some() {
-		return Some(FileFormat::LBL);
+    let mut iter = data.trim().lines();
+    let first = iter.next()?;
+
+    if Block::from_lbl(first).is_some() {
+        return Some(FileFormat::LBL);
+    }
+
+    if first.starts_with("lvlArray") {
+        return Some(FileFormat::AS3);
+    }
+
+    None
+}
+
+pub fn decode_any(data: &str) -> Option<Vec<Block>> {
+	let fmt = guess_format(data)?;
+	match fmt {
+		FileFormat::LBL => decode_lbl(data),
+		FileFormat::AS3 => decode_as3(data).ok(),
 	}
-	
-	if first.starts_with("lvlArray"){
-		return Some(FileFormat::AS3);
-	}
-	
-	None
 }
 
 pub struct LevelBuilder {
@@ -199,8 +61,20 @@ impl LevelBuilder {
         }
     }
 
+    pub fn set_dark(&mut self, val: bool) {
+        self.is_dark = val;
+    }
+	
+	pub fn get_dark(&self) -> bool {
+		self.is_dark
+	}
+
     pub fn add_block(&mut self, i: usize, block: Block) {
         *self.level_data.get_mut(i).unwrap() = block;
+    }
+
+    pub fn get_level_data(&self) -> &[Block] {
+        &self.level_data
     }
 
     pub fn render_image(&self) -> image::DynamicImage {
@@ -208,10 +82,62 @@ impl LevelBuilder {
             BackgroundType::Cobble => image::load_from_memory(M0_BG).unwrap(), //TODO: LAZY_STATIC
             _ => unimplemented!(),
         }
-        .resize(1920, 1080, image::FilterType::Nearest);//TODO: Choose best filter; ,image::FilterType::CatmullRom
-														//TODO: Image Cache 
+        .resize(1920, 1080, image::FilterType::Nearest); //TODO: Choose best filter; ,image::FilterType::CatmullRom
+                                                         //TODO: Image Cache
 
         img
+    }
+
+    pub fn export_level(&self) -> Option<Vec<Block>> {
+        let mut to_insert = Vec::with_capacity(2);
+        if self.is_dark {
+            to_insert.push(Block::Dark);
+        }
+
+        if self.background != BackgroundType::Cobble {
+            to_insert.push(Block::Background {
+                background_type: self.background.clone(),
+            });
+        }
+
+        let data = self
+            .level_data
+            .iter()
+            .map(|block| {
+                if !to_insert.is_empty() && block == &Block::Empty {
+                    to_insert.pop().unwrap_or_else(|| unreachable!())
+                } else {
+                    block.clone()
+                }
+            })
+            .collect();
+
+        if to_insert.is_empty() {
+            Some(data)
+        } else {
+            None
+        }
+    }
+
+	/// Imports a block array
+    pub fn import(&mut self, level: &[Block]) {
+		self.is_dark = false;
+		self.background = BackgroundType::Cobble;
+		
+        for (i, block) in level.iter().enumerate() {
+            let block = match block {
+                Block::Background { background_type } => {
+                    self.background = background_type.clone();
+                    Block::Empty
+                }
+                Block::Dark => {
+                    self.set_dark(true);
+                    Block::Empty
+                }
+                b => b.clone(),
+            };
+            self.level_data[i] = block; //TODO: Zip iter mut
+        }
     }
 }
 

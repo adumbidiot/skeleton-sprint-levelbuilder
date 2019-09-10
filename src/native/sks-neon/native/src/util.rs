@@ -61,3 +61,73 @@ pub fn block_to_builder_internal(b: &Block) -> Cow<'static, str> {
         Block::Wire => "wirered".into(),
     }
 }
+
+/// Converts from levelbuilder format to a block
+pub fn builder_internal_to_block(block_str: &str) -> Option<Block> {
+    match block_str {
+        "block" => Some(Block::Block),
+        "block_key" => Some(Block::Lock),
+        "cobble_bg" => Some(Block::Background {
+            background_type: BackgroundType::Cobble,
+        }),
+        "concrete_bg" => Some(Block::Background {
+            background_type: BackgroundType::Concrete,
+        }),
+        "decoration_scaffold" => Some(Block::Scaffold),
+        "decoration_sconce" => Some(Block::Torch),
+        "exit" => Some(Block::Exit),
+        "item_key" => Some(Block::Key),
+        "main" => Some(Block::Player),
+        "mask_circle" => Some(Block::Dark),
+        "null" => Some(Block::Empty),
+        "onewaywalldown" => Some(Block::OneWayWall {
+            direction: Direction::Down,
+        }),
+        "onewaywallleft" => Some(Block::OneWayWall {
+            direction: Direction::Left,
+        }),
+        "onewaywallright" => Some(Block::OneWayWall {
+            direction: Direction::Right,
+        }),
+        "onewaywallup" => Some(Block::OneWayWall {
+            direction: Direction::Up,
+        }),
+        "pipe_in" => Some(Block::PipeIn),
+        "pipe_out" => Some(Block::PipeOut),
+        "pipe_phase" => Some(Block::PipePhase),
+        "pipe_solid" => Some(Block::PipeSolid),
+        "powerupburrow" => Some(Block::PowerUpBurrow),
+        "poweruprecall" => Some(Block::PowerUpRecall),
+        "skullfall_bg" => Some(Block::Background {
+            background_type: BackgroundType::Skullfall,
+        }),
+        "secretexit" => Some(Block::SecretExit),
+        "switch" => Some(Block::Switch),
+        "switchceiling" => Some(Block::SwitchCeiling),
+        "toggleblocksolid" => Some(Block::ToggleBlock { solid: true }),
+        "toggleblockphase" => Some(Block::ToggleBlock { solid: false }),
+        "undefined1" => Some(Block::Background {
+            background_type: BackgroundType::Reserved1,
+        }),
+        "undefined2" => Some(Block::Background {
+            background_type: BackgroundType::Reserved2,
+        }),
+        "undefined3" => Some(Block::Background {
+            background_type: BackgroundType::Reserved3,
+        }),
+        "waterfall_bg" => Some(Block::Background {
+            background_type: BackgroundType::Waterfall,
+        }),
+        "wirered" => Some(Block::Wire),
+        block_str => {
+            let note_frag = "Note:";
+            if block_str.starts_with(note_frag) {
+                Some(Block::Note {
+                    text: block_str[note_frag.len()..].into(),
+                })
+            } else {
+                None
+            }
+        }
+    }
+}

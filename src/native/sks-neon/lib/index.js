@@ -39,6 +39,10 @@ module.exports.LevelBuilder = class LevelBuilder {
 	getImage() {
 		this.internal.getImage();
 	}
+	
+	getLevelData() {
+		return this.internal.getLevelData();
+	}
 
 	// Canvas MUST be 1920 x 1080
 	drawImage(ctx) {
@@ -56,20 +60,68 @@ module.exports.LevelBuilder = class LevelBuilder {
 
 		this.dirty = false;
 	}
+	
+	render(ctx) {
+		let boxSize = 1920 / 32;
+		let data = this.internal.getLevelData();
+		for(var i = 0; i < 18 * 32; i++){
+			let y = (i / 32) | 0;
+			let x = i % 32;
+			switch(data[i]) {
+				case "null": {
+						break;
+				}
+				default: {
+					//console.log(data[i]);
+					let block = data[i];
+					
+					if(data[i].startsWith('Note:')){
+						block = 'note';
+					}
+					
+					let img = new Image();
+					img.src = './images/' + block + '.png';
+					
+					ctx.drawImage(img, x * boxSize, y * boxSize, boxSize, boxSize);
+				}
+			}
+			
+		}
+	}
 
 	drawGrid(ctx) {
 		if(!this.grid) return;
-		ctx.clearRect(0, 0, 1920, 1080);
-		
 		let boxSize = 1920 / 32;
 		ctx.beginPath();
 		ctx.lineWidth = "4";
 		ctx.strokeStyle = "black";
 		for (var i = 0; i < 32 * 18; i++) {
-			let x = (i / 18) | 0;
-			let y = i % 18;
+			let y = (i / 32) | 0;
+			let x = i % 32;
 			ctx.rect(x * boxSize, y * boxSize, boxSize, boxSize);
 		}
 		ctx.stroke();
+	}
+	
+	addBlock(i, block){
+		this.internal.addBlock(i, block);
+		this.dirty = true;
+	}
+	
+	exportLevel(){
+		return this.internal.exportLevel();
+	}
+	
+	setDark(val){
+		this.internal.setDark(val);
+	}
+	
+	getDark(){
+		return this.internal.getDark();
+	}
+	
+	import(data){
+		this.dirty = true;
+		return this.internal.import(data);
 	}
 }
