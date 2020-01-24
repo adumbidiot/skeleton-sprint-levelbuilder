@@ -120,7 +120,7 @@ pub fn builder_internal_to_block(block_str: &str) -> Option<Block> {
         }),
         "wirered" => Some(Block::Wire),
         block_str => {
-            let note_frag = "Note:";
+            let note_frag = "Note: ";
             if block_str.starts_with(note_frag) {
                 Some(Block::Note {
                     text: block_str[note_frag.len()..].into(),

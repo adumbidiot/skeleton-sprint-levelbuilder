@@ -68,7 +68,12 @@
 				let steamworksWorkshopSyncPath = path.resolve(srcDir, 'game/Custom Levels');
 				
 				if (!fs.existsSync(steamworksWorkshopSyncPath)){
-					fs.mkdirSync(steamworksWorkshopSyncPath);
+					try {
+						fs.mkdirSync(steamworksWorkshopSyncPath);
+					}catch(e) {
+						alert(e);
+						console.error(e);
+					}
 				}
 				try{
 					greenworks.ugcSynchronizeItems(steamworksWorkshopSyncPath, function(items){

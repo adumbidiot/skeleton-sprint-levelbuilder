@@ -1,50 +1,89 @@
 mod as3;
-mod block;
 
-pub use as3::decode_as3;
 pub use as3::encode_as3;
-pub use block::BackgroundType;
-pub use block::Block;
-pub use block::Direction;
-use std::borrow::Cow;
+pub use sks::block::BackgroundType;
+pub use sks::block::Block;
+pub use sks::block::Direction;
 
-pub const LEVEL_WIDTH: usize = 32;
-pub const LEVEL_HEIGHT: usize = 18;
+use sks::LEVEL_WIDTH;
+use sks::LEVEL_HEIGHT;
 
-pub const M0_BG: &[u8] = include_bytes!("../assets/M0.png");
-
+///Legacy Compat
 pub fn decode_lbl(data: &str) -> Option<Vec<Block>> {
-    data.lines().map(|s| Block::from_lbl(s)).collect()
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum FileFormat {
-    LBL,
-    AS3,
-}
-
-pub fn guess_format(data: &str) -> Option<FileFormat> {
-    let mut iter = data.trim().lines();
-    let first = iter.next()?;
-
-    if Block::from_lbl(first).is_some() {
-        return Some(FileFormat::LBL);
-    }
-
-    if first.starts_with("lvlArray") {
-        return Some(FileFormat::AS3);
-    }
-
-    None
+    sks::format::lbl::decode(data).ok()
 }
 
 pub fn decode_any(data: &str) -> Option<Vec<Block>> {
-	let fmt = guess_format(data)?;
-	match fmt {
-		FileFormat::LBL => decode_lbl(data),
-		FileFormat::AS3 => decode_as3(data).ok(),
+	sks::format::decode(&data).ok()
+}
+///End Legacy Compat
+
+pub const M0_BG: &[u8] = include_bytes!("../assets/M0.png");
+
+/*
+impl Block {
+	pub fn as_id(&self) -> usize {
+		match self {
+            Block::Background {
+                background_type: BackgroundType::Cobble,
+            } => "M0".into(),
+            Block::Background {
+                background_type: BackgroundType::Waterfall,
+            } => "M1".into(),
+            Block::Background {
+                background_type: BackgroundType::Skullfall,
+            } => "M2".into(),
+            Block::Background {
+                background_type: BackgroundType::Concrete,
+            } => "M3".into(),
+            Block::Background {
+                background_type: BackgroundType::Reserved1,
+            } => "M4".into(),
+            Block::Background {
+                background_type: BackgroundType::Reserved2,
+            } => "M5".into(),
+            Block::Background {
+                background_type: BackgroundType::Reserved3,
+            } => "M6".into(),
+            Block::Block => "B0".into(),
+            Block::Dark => "A0".into(),
+            Block::Empty => "00".into(),
+            Block::Exit => "E0".into(),
+            Block::Key => "IK".into(),
+            Block::Lock => "BK".into(),
+            Block::Note { text } => format!("Note: {}", text).into(),
+            Block::OneWayWall {
+                direction: Direction::Down,
+            } => "OD".into(),
+            Block::OneWayWall {
+                direction: Direction::Up,
+            } => "OU".into(),
+            Block::OneWayWall {
+                direction: Direction::Left,
+            } => "OL".into(),
+            Block::OneWayWall {
+                direction: Direction::Right,
+            } => "OR".into(),
+            Block::PipeIn => "CI".into(),
+            Block::PipeOut => "CO".into(),
+            Block::PipePhase => "CP".into(),
+            Block::PipeSolid => "CS".into(),
+            Block::Player => "X0".into(),
+            Block::PowerUpBurrow => "P0".into(),
+            Block::PowerUpRecall => "P1".into(),
+            Block::SecretExit => "E1".into(),
+            Block::Scaffold => "D0".into(),
+            Block::Switch => "S0".into(),
+            Block::SwitchCeiling => "S1".into(),
+            Block::ToggleBlock { solid: true } => "T0".into(),
+            Block::ToggleBlock { solid: false } => "T1".into(),
+            Block::Torch => "D1".into(),
+            Block::Wire => "WR".into(),
+        }
 	}
 }
+*/
+
 
 pub struct LevelBuilder {
     level_data: Vec<Block>,
@@ -148,11 +187,5 @@ mod tests {
     fn it_works() {
         let img = LevelBuilder::new().render_image();
         img.save("test.png");
-    }
-
-    #[test]
-    fn as3_decode() {
-        let file_data = std::fs::read_to_string("kitchen_sink_as3.txt").unwrap();
-        let _data = decode_as3(&file_data).unwrap();
     }
 }

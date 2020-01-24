@@ -1,7 +1,3 @@
-#[macro_use]
-extern crate neon;
-extern crate sks;
-
 mod util;
 
 use neon::prelude::*;
@@ -17,51 +13,16 @@ fn hello(mut cx: FunctionContext) -> JsResult<JsString> {
     Ok(cx.string("hello node"))
 }
 
-///Converts from the lvlbuilders old internal rep into lbl format
+/// Converts from the lvlbuilders old internal rep into lbl format
 fn encode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
     let block_str = cx.argument::<JsString>(0)?.value();
-    match block_str.as_str() {
-        "block" => Ok(cx.string("B0").upcast()),
-        "block_key" => Ok(cx.string("BK").upcast()),
-        "cobble_bg" => Ok(cx.string("M0").upcast()),
-        "concrete_bg" => Ok(cx.string("M3").upcast()),
-        "decoration_scaffold" => Ok(cx.string("D0").upcast()),
-        "decoration_sconce" => Ok(cx.string("D1").upcast()),
-        "exit" => Ok(cx.string("E0").upcast()),
-        "item_key" => Ok(cx.string("IK").upcast()),
-        "main" => Ok(cx.string("X0").upcast()),
-        "mask_circle" => Ok(cx.string("A0").upcast()),
-        "null" => Ok(cx.string("00").upcast()),
-        "onewaywalldown" => Ok(cx.string("OD").upcast()),
-        "onewaywallleft" => Ok(cx.string("OL").upcast()),
-        "onewaywallright" => Ok(cx.string("OR").upcast()),
-        "onewaywallup" => Ok(cx.string("OU").upcast()),
-        "pipe_in" => Ok(cx.string("CI").upcast()),
-        "pipe_out" => Ok(cx.string("CO").upcast()),
-        "pipe_phase" => Ok(cx.string("CP").upcast()),
-        "pipe_solid" => Ok(cx.string("CS").upcast()),
-        "powerupburrow" => Ok(cx.string("P0").upcast()),
-        "poweruprecall" => Ok(cx.string("P1").upcast()),
-        "skullfall_bg" => Ok(cx.string("M2").upcast()),
-        "secretexit" => Ok(cx.string("E1").upcast()),
-        "switch" => Ok(cx.string("S0").upcast()),
-        "switchceiling" => Ok(cx.string("S1").upcast()),
-        "toggleblocksolid" => Ok(cx.string("T0").upcast()),
-        "toggleblockphase" => Ok(cx.string("T1").upcast()),
-        "undefined1" => Ok(cx.string("M4").upcast()),
-        "undefined2" => Ok(cx.string("M5").upcast()),
-        "undefined3" => Ok(cx.string("M6").upcast()),
-        "waterfall_bg" => Ok(cx.string("M1").upcast()),
-        "wirered" => Ok(cx.string("WR").upcast()),
-        block_str => {
-            if block_str.starts_with("Note:") {
-                Ok(cx.string(block_str).upcast())
-            } else {
-                println!("[sks_rust::encode_block_lbl] Unknown: {}", &block_str);
+	match util::builder_internal_to_block(&block_str) {
+		Some(v) => Ok(cx.string(v.as_lbl()).upcast()),
+		 None => {
+			println!("[sks_rust::encode_block_lbl] Unknown: {}", &block_str);
                 Ok(cx.null().upcast())
-            }
-        }
-    }
+			}
+	}
 }
 
 fn block_array_to_js_array<'a, T: neon::object::This>(
@@ -86,7 +47,7 @@ fn encode_as3(mut cx: FunctionContext) -> JsResult<JsValue> {
         .map(|el| {
             el.downcast::<JsString>()
                 .ok()
-                .and_then(|el| Block::from_lbl(&el.value()))
+                .and_then(|el| Block::from_lbl(&el.value()).ok())
         })
         .collect();
 

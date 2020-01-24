@@ -1,18 +1,19 @@
 [package]
 name = "sks-neon"
 version = "0.0.1"
-authors = ["adumbidiot <nathaniel.daniel23@outlook.com>"]
+authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
 license = "MIT"
 build = "build.rs"
 exclude = ["artifacts.json", "index.node"]
+edition = "2018"
 
 [lib]
 name = "sks_neon"
-crate-type = ["dylib"]
+crate-type = [ "dylib" ]
 
 [build-dependencies]
 neon-build = "0.3.0"
 
 [dependencies]
-neon = "0.3.1"
-sks = { path = "lib/sks"}
+neon = "0.3.3"
+sks = { path = "lib/sks_legacy", package = "sks_legacy" }

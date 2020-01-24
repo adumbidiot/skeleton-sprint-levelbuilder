@@ -364,7 +364,7 @@ B0
 00
 00
 00
-Note:Press 'Down' at the apex of your jump to fast fall
+Note: Press 'Down' at the apex of your jump to fast fall
 P1
 00
 00
