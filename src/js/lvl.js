@@ -22,17 +22,20 @@ window.lvl = function(name){
 	
 	let loopFunc = function(){
 		if(self.levelBuilder.isDirty()){
-			//TODO: Clear Canvas
+            let start = performance.now();
+			self.bgCtx.clearRect(0, 0, self.background.width, self.background.height);
 			self.levelBuilder.drawImage(self.bgCtx);
-			self.levelBuilder.render(self.bgCtx);
 			self.levelBuilder.drawGrid(self.bgCtx);
+			self.levelBuilder.dirty = false;
+            let end = performance.now();
+            console.log("Dirty Redraw: ", end - start);
 		}
 		requestAnimationFrame(loopFunc);
 	}
 	
 	loopFunc();
 	
-	//Stupid js "this" crap
+	// Stupid js "this" crap
 	this.down = function(event){
 		self.renderEvent(event);
 		event.preventDefault();
@@ -43,23 +46,45 @@ window.lvl = function(name){
 	this.click = function(event){
 		self.renderEvent(event);
 	}
+    
+    this.board.addEventListener("mousemove", (event) => {
+        const blockSize = 1920 / 32;
+        
+        const rect = this.background.getBoundingClientRect();
+        
+        const xRaw = event.offsetX;
+        const yRaw = event.offsetY;
+        
+        const scaleX = this.background.width / rect.width;
+        const scaleY = this.background.height / rect.height;
+        
+        const x = xRaw * scaleX;
+        const y = yRaw * scaleY;
+        const index = Math.round(x / blockSize) + (Math.round(y / blockSize) * 32);
+        
+        console.log("bg_index", index, event);
+    });
 }
-//Generates a board
+// Generates a board
 window.lvl.prototype.generateBoard = function(){
+    this.board.appendChild(this.background);
+    
 	for(var i = 0; i != (18 * 32); i++){
 		var grid = this.gridTemplate.cloneNode();
 		grid.id = this.name + (i + 1);
 		this.board.appendChild(grid);
 		
-		grid.addEventListener("mouseover", this.over);
+		// Apparently this is necessary as js mouse events are actual trash and dont trigger fast enough for a simple drawing app
+		// grid.addEventListener("mouseover", this.over);
+        grid.addEventListener("mousemove", this.over);
 		grid.addEventListener("mousedown", this.down);
 		grid.addEventListener("click", this.click);
 	}
-	this.board.appendChild(this.background);
 	return this.board;
 }
-//Renders a specified block at specified index
+// Renders a specified block at specified index
 window.lvl.prototype.render = function(index, blockType){
+	//this.levelBuilder.internalDirty = true;
 	if (!this.active) return;
 	if(blockType == 'delete'){
 		blockType = 'null';
@@ -78,25 +103,37 @@ window.lvl.prototype.disableGrid = function(){
 window.lvl.prototype.enableGrid = function(){
 	this.levelBuilder.enableGrid();
 }
-//Clears a tile at specified index
-window.lvl.prototype.clearTile = function(index){
-	this.levelBuilder.addBlock(index, 'null');	
-}
-//Clears all tiles on board
-window.lvl.prototype.clearAllTiles = function(){
-	for(var i = 0; i != (18 * 32); i++){
-		this.clearTile(i);
-	}
-}
 
 //Handler for a render event
-window.lvl.prototype.renderEvent = function(event){
+window.lvl.prototype.renderEvent = function(event, index){
 	var target = event.target;
 	if(target.type == 'block'){
 		target = target.parentNode;
 	}
 	
 	var index = Number(target.id.slice(this.name.length)) - 1;
+	
+	//mrcl sim
+	
+	const rect = this.background.getBoundingClientRect();
+	
+	let boxSize = 1920 / 32;
+	
+	const xRaw = event.clientX - rect.left;
+	const yRaw = event.clientY - rect.top;
+	const scaleX = this.background.width / rect.width;
+    const scaleY = this.background.height / rect.height; 
+	const x = xRaw * scaleX;
+	const y = yRaw * scaleY;
+	const index1 = Math.floor(x / boxSize) + (Math.floor(y / boxSize) * 32);
+	console.log(index, index1);
+	if(index1 != index) {
+		let el = target.getBoundingClientRect();
+		let elX = el.x;
+		let elY = el.y;
+		console.log('Error', index, index1, event.type);
+	}
+    index = index1;
 	
 	if(event.type == "mousedown"){
 		if(event.button == 0){
@@ -108,7 +145,7 @@ window.lvl.prototype.renderEvent = function(event){
 		}
 	}
 	
-	if(event.type == "mouseover"){
+	if(event.type == "mouseover" || event.type == "mousemove"){
 		if(window.lvl.mouseDownRight){
 			this.render(index, this.active);
 		}
@@ -119,66 +156,17 @@ window.lvl.prototype.renderEvent = function(event){
 	}
 }
 
-lvl.prototype.export1D = function(){
-	return this.levelBuilder.exportLevel().map(window.sks.encodeBlockLBL);
-}
-
 lvl.prototype.exportLBL = function(){
-	var data = this.export1D();
-	var out = '';
-	for(var i = 0; i != data.length; i++){
-		out += data[i] + '\n';
-	}
-	return out;			
+	return this.levelBuilder.export('lbl');		
 }
 
 lvl.prototype.exportPNG = function(cb){
-	var array = this.export1D();
-	var can = document.createElement('canvas');
-	can.width = '800';
-	can.height = '450';
-	
-	var context = can.getContext('2d');
-	
-	var back = new Image();
-	back.src= './images/background.png';
-	context.drawImage(back, 0, 0, 800, 450);
-	
-	var count = 0;
-	var total = 0;
-	for(var i = 0; i != 18; i++){
-		for(var j = 0; j != 32; j++){
-			var drawing = new Image();
-			if(window.sks.decodeBlockLBL(array[( i * 32) + j]) != 'null'){
-				count++;
-				total++;
-				drawing.onload = (function() {
-					var a = drawing;
-					var x = j;
-					var y = i;
-					return function(){
-  	 					context.drawImage(a, x * 25, y * 25, 25, 25);
-						count--;
-						if(count == 0){
-							var output = can.toDataURL('image/png');
-							cb(output);
-						}
-					}
-				})();
-				drawing.src = './images/' + window.sks.decodeBlockLBL(array[(i * 32) + j]) + '.png';
-			}
-		}
-	}
-	if(total == 0){
-		var output = can.toDataURL('image/png');
-		cb(output);
-	}
+	return this.levelBuilder.getImage().toDataURL('image/png');
 }
 
 lvl.prototype.exportDev = function(num){
-	num = num || 'x';
-	var array = this.export1D();
-	return window.sks.encodeAS3(num, array);
+	this.levelBuilder.setLevel(num);
+	return this.levelBuilder.export('as3');
 }
 
 // Guesses the import format and imports

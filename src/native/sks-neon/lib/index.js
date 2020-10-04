@@ -43,50 +43,33 @@ module.exports.LevelBuilder = class LevelBuilder {
 	getLevelData() {
 		return this.internal.getLevelData();
 	}
+	
+	getImage() {
+		let binary = new Uint8ClampedArray(this.internal.getImage());
+        // let imageData = new ImageData(binary, 800, 600);
+		// let imageData = new ImageData(binary, 1280, 720);
+		let imageData = new ImageData(binary, 1920, 1080);
+		let canvas = document.createElement('canvas');
+		canvas.width = imageData.width;
+		canvas.height = imageData.height;
+		canvas.getContext('2d').putImageData(imageData, 0, 0);
+		return canvas;
+	}
 
 	// Canvas MUST be 1920 x 1080
 	drawImage(ctx) {
 		ctx.clearRect(0, 0, 1920, 1080);
 		
-		if(this.internalDirty){
-			let binary = new Uint8ClampedArray(this.internal.getImage());
-			let imageData = new ImageData(binary, 1920, 1080);
-			ctx.putImageData(imageData, 0, 0);
-			this.internalData = imageData;
+		if(this.internalDirty || true) {
+			let img = this.getImage();
+			ctx.drawImage(img, 0, 0, 1920, 1080);
+			this.internalData = img;
 			this.internalDirty = false;
-		}else{
-			ctx.putImageData(this.internalData, 0, 0);
+		} else {
+			ctx.drawImage(this.internalData, 0, 0, 1920, 1080);
 		}
 
 		this.dirty = false;
-	}
-	
-	render(ctx) {
-		let boxSize = 1920 / 32;
-		let data = this.internal.getLevelData();
-		for(var i = 0; i < 18 * 32; i++){
-			let y = (i / 32) | 0;
-			let x = i % 32;
-			switch(data[i]) {
-				case "null": {
-						break;
-				}
-				default: {
-					//console.log(data[i]);
-					let block = data[i];
-					
-					if(data[i].startsWith('Note:')){
-						block = 'note';
-					}
-					
-					let img = new Image();
-					img.src = './images/' + block + '.png';
-					
-					ctx.drawImage(img, x * boxSize, y * boxSize, boxSize, boxSize);
-				}
-			}
-			
-		}
 	}
 
 	drawGrid(ctx) {
@@ -108,6 +91,10 @@ module.exports.LevelBuilder = class LevelBuilder {
 		this.dirty = true;
 	}
 	
+	export(type){
+		return this.internal.export(type);
+	}
+	
 	exportLevel(){
 		return this.internal.exportLevel();
 	}
@@ -123,5 +110,13 @@ module.exports.LevelBuilder = class LevelBuilder {
 	import(data){
 		this.dirty = true;
 		return this.internal.import(data);
+	}
+	
+	setLevel(lvl){
+		this.internal.setLevel(lvl);
+	}
+	
+	callThisFunctionToDieInstantly(){
+		this.internal.callThisFunctionToDieInstantly();
 	}
 }

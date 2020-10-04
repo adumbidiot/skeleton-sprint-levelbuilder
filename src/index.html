@@ -40,6 +40,7 @@
 			const path = require('path');
 			const process = require('process');
 			const remote = require('electron').remote;
+			
 			window.dialog = remote.dialog;
 			const srcDir = process.cwd();
 			console.log('srcDir: ' + srcDir);
@@ -48,13 +49,8 @@
 			window.fs = fs;
 			
 			window.onerror = function (errorMsg, url, lineNumber) {
-			   alert(errorMsg + lineNumber);
-			   // alert("This is a stack trace! Wow! --> %s", error.stack);
+			   alert(errorMsg + ' line: ' + lineNumber);
 			};
-			
-			//var path = remote.getGlobal('path');
-			//console.log(path);
-			//console.log(__dirname);
 			
 			/*console.log = function(data){
 				alert(data); //Comment out of relese build
@@ -255,9 +251,7 @@
 					
 					function getLevelPNG(){
 						return new Promise(function(resolve, reject){
-							level.exportPNG(function(data){
-								resolve(data);
-							});
+							resolve(level.exportPNG());
 						});
 					}
 					

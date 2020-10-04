@@ -1,0 +1,24 @@
+[package]
+name = "skeleton-sprint-levelbuilder"
+version = "0.0.0"
+authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
+edition = "2018"
+
+[dependencies]
+conrod_core = "0.70.0"
+image = "0.23.10"
+human-panic = "1.0.3"
+wgpu = "0.6.0"
+futures = "0.3.5"
+conrod_wgpu = "0.70.0"
+sks = { path = "C:/Users/nathaniel/Documents/Github/sks-rs" }
+
+[patch.crates-io]
+# Updates piston-graphics
+conrod_core = { git = "https://github.com/adumbidiot/conrod", branch = "update-piston-graphics" }
+
+# Static crt
+spirv_cross = { path = "C:/Users/nathaniel/Documents/Github/spirv_cross/spirv_cross" }
+
+# Updated wgpu
+conrod_wgpu = { git = "https://github.com/adumbidiot/conrod", branch = "update-piston-graphics" }
