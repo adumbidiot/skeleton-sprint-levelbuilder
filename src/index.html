@@ -19,75 +19,10 @@
 		<link rel="import" href="./bower_components/iron-icons/iron-icons.html">
 		<link rel="import" href="./bower_components/paper-spinner/paper-spinner-lite.html">
 		
-		<script>
-			const sks = require('sks-neon');
-			window.sks = sks;
-		</script>
 		<script src="./js/lvl.js"></script>
-		<script>
-			//Electron code
-			let greenworks;
-			try {
-				greenworks = require('greenworks');
-			}catch(e) {
-				console.error('Greenworks dll error');
-				greenworks = {
-					initAPI: function(){
-						return false;
-					}
-				};
-			}
-			const path = require('path');
-			const process = require('process');
-			const remote = require('electron').remote;
-			
-			window.dialog = remote.dialog;
-			const srcDir = process.cwd();
-			console.log('srcDir: ' + srcDir);
-			process.activateUvLoop();
-			const fs = require('fs');
-			window.fs = fs;
-			
-			window.onerror = function (errorMsg, url, lineNumber) {
-			   alert(errorMsg + ' line: ' + lineNumber);
-			};
-			
-			/*console.log = function(data){
-				alert(data); //Comment out of relese build
-			}*/
-				
-			let steam = false;
-			if(greenworks.initAPI()){
-				console.log('Steamworks API Initialized');
-				steam = true;
-			
-				let steamworksWorkshopSyncPath = path.resolve(srcDir, 'game/Custom Levels');
-				
-				if (!fs.existsSync(steamworksWorkshopSyncPath)){
-					try {
-						fs.mkdirSync(steamworksWorkshopSyncPath);
-					}catch(e) {
-						alert(e);
-						console.error(e);
-					}
-				}
-				try{
-					greenworks.ugcSynchronizeItems(steamworksWorkshopSyncPath, function(items){
-						console.log('Workshop Items Loaded: ');
-						console.log(items);
-					}, function(err){
-						throw err;
-					});
-				}catch(e){
-					alert(e);
-				}
-			}else{
-				console.log('Steamworks API Initialization Failed'); 
-			}
-			
-			//Legacy browser code
-			const level = new lvl('build');
-			window.level = level;
+		<script>				
+			// Legacy browser code
+			window.level = new lvl('build');
 			var darkbox;
 			var gridbox;
 			
@@ -134,9 +69,9 @@
 					level.setDark(darkbox.checked);
 				};
 				gridbox.onchange = function(){
-					if(gridbox.checked){
+					if(gridbox.checked) {
 						level.enableGrid();
-					}else{
+					} else {
 						level.disableGrid();
 					}
 				};
@@ -304,36 +239,7 @@
 				}
 				
 			}
-			
-			/*window.ondragstart = function(){
-				return false;
-			}*/
-			
-			/*var resizeTarget;
-			function startResize(e){
-				window.addEventListener('mousemove', resize, false);
-				window.addEventListener('mouseup', endResize, false);
-				resizeTarget = e.target.parentNode;
-				console.log(e);
-			}
-			function resize(e){
-				resizeTarget.style.width = (e.clientX - resizeTarget.offsetLeft) + 'px';
-				console.log(e);
-				console.log(resizeTarget.width);
-			}
-			function endResize(){
-			
-			}  */
 		</script>
-		<!--<style>
-			* {
-					-webkit-touch-callout:none;
-					-webkit-user-select:none;
-  					-moz-user-select:none;
-					-ms-user-select:none;
-					user-select:none;
-			}
-		</style>-->
 		<style is="custom-style">
 				paper-button.export{
 					background-color: #FF0000;
