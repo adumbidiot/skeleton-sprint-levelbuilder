@@ -7,14 +7,12 @@ window.lvl = function (name) {
     this.active = null;
     var self = this;
 
-    this.board = document.createElement('div');
+    this.board = document.createElement('canvas');
     this.board.id = this.name;
-
-    this.background = document.createElement('canvas');
-    this.background.width = 1920;
-    this.background.height = 1080;
-    this.background.style.cssText = 'width: 80%;';
-    this.bgCtx = this.background.getContext('2d');
+    this.board.width = 1920;
+    this.board.height = 1080;
+    this.board.style.cssText = 'width: 80%;';
+    this.bgCtx = this.board.getContext('2d');
 
     this.levelBuilder = new window.sks.LevelBuilder();
     console.log(this.levelBuilder);
@@ -22,10 +20,8 @@ window.lvl = function (name) {
     let loopFunc = function () {
         if (self.levelBuilder.isDirty()) {
             let start = performance.now();
-            self.bgCtx.clearRect(0, 0, self.background.width, self.background.height);
-            self.levelBuilder.drawImage(self.bgCtx);
-            self.levelBuilder.drawGrid(self.bgCtx);
-            self.levelBuilder.dirty = false;
+            self.bgCtx.clearRect(0, 0, self.board.width, self.board.height);
+            self.levelBuilder.drawFrame(self.bgCtx);
             let end = performance.now();
             console.log("Dirty Redraw: ", end - start);
         }
@@ -35,13 +31,13 @@ window.lvl = function (name) {
     loopFunc();
 
     let boardHandler = (event) => {
-        const blockSize = 1920 / 32;
-        const rect = this.background.getBoundingClientRect();
+        const blockSize = this.board.width / 32;
+        const rect = this.board.getBoundingClientRect();
         const xRaw = event.clientX - rect.left;
         const yRaw = event.clientY - rect.top;
 
-        const scaleX = this.background.width / rect.width;
-        const scaleY = this.background.height / rect.height;
+        const scaleX = this.board.width / rect.width;
+        const scaleY = this.board.height / rect.height;
 
         const x = xRaw * scaleX;
         const y = yRaw * scaleY;
@@ -58,20 +54,17 @@ window.lvl = function (name) {
                 this.render(index, "delete");
             }
         }, 0);
+
+        event.preventDefault();
     };
 
-    this.background.addEventListener("mousemove", boardHandler);
-    this.background.addEventListener("mousedown", boardHandler);
-    this.background.addEventListener("mouseup", boardHandler);
+    this.board.addEventListener("mousemove", boardHandler);
+    this.board.addEventListener("mousedown", boardHandler);
+    this.board.addEventListener("mouseup", boardHandler);
 }
-// Generates a board
-window.lvl.prototype.generateBoard = function () {
-    this.board.appendChild(this.background);
-    return this.board;
-}
+
 // Renders a specified block at specified index
 window.lvl.prototype.render = function (index, blockType) {
-    this.levelBuilder.internalDirty = true;
     if (!this.active)
         return;
     if (blockType == 'delete')
@@ -223,4 +216,42 @@ if (greenworks.initAPI()) {
     }
 } else {
     console.log('Steamworks API Initialization Failed');
+}
+
+// Init
+window.level = new lvl('build');
+
+// Util
+
+async function getFilename() {
+    let filename = await window.dialog.showOpenDialog();
+    if (!filename) {
+        throw "No Dialog Data";
+    }
+    let data = await readFile(filename[0], 'utf8');
+    return data;
+}
+
+function readFile(path, encoding) {
+    return new Promise((resolve, reject) => {
+        window.fs.readFile(path, encoding, function (err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
+
+function openImportPopup() {
+    getFilename()
+    .then((data) => {
+        if (!window.level.import(data)) {
+            alert("Failed to load file");
+        }
+    })
+    .catch((e) => {
+        throw e;
+    });
 }

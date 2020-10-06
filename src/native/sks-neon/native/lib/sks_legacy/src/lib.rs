@@ -6,6 +6,8 @@ pub use sks::block::Direction;
 pub use sks::format::as3::LevelNum;
 pub use sks::format::decode;
 pub use sks::format::FileFormat;
+pub use image::DynamicImage;
+pub use image::RgbaImage;
 
 pub struct LevelBuilder {
     level_num: LevelNum,
@@ -20,6 +22,10 @@ impl LevelBuilder {
             
             skeleton_sprint_levelbuilder: skeleton_sprint_levelbuilder::App::new().expect("LevelBuilder Init"),
         }
+    }
+    
+    pub fn set_grid(&mut self, grid: bool) {
+        self.skeleton_sprint_levelbuilder.set_grid(grid);
     }
 
     pub fn set_dark(&mut self, val: bool) {
@@ -38,8 +44,8 @@ impl LevelBuilder {
         self.skeleton_sprint_levelbuilder.get_level_data()
     }
 
-    pub fn render_image(&mut self) -> image::DynamicImage {
-        self.skeleton_sprint_levelbuilder.get_level_image().unwrap()
+    pub fn render_image(&mut self) -> Result<image::DynamicImage, sks::render::RenderError> {
+        self.skeleton_sprint_levelbuilder.get_level_image()
     }
 
     pub fn export(&self) -> Option<Vec<Block>> {

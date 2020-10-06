@@ -2,7 +2,7 @@ mod renderer;
 mod ui;
 
 use crate::renderer::Renderer;
-use conrod_core::text::Font;
+use image::GenericImageView;
 use sks::block::BackgroundType as SksBackgroundType;
 use sks::block::Direction as SksDirection;
 use std::collections::HashMap;
@@ -52,6 +52,8 @@ const BLOCKS: &[sks::Block] = &[
     sks::Block::Wire,
 ];
 
+type BgraImage = image::ImageBuffer<image::Bgra<u8>, Vec<u8>>;
+
 #[derive(Debug)]
 pub enum AppError {
     Render(crate::renderer::RenderError),
@@ -81,72 +83,41 @@ impl std::fmt::Display for AppError {
 
 impl std::error::Error for AppError {}
 
-fn load_raw_image_to_conrod_image(
-    renderer: &Renderer,
-    image: &[u8],
-) -> Result<conrod_wgpu::Image, AppError> {
-    let rgba_image = image::load_from_memory(image)?;
-    Ok(load_image_to_conrod_image(renderer, rgba_image.into_rgba()))
+pub struct IcedBlockMap {
+    map: HashMap<sks::block::Block, iced_native::image::Handle>,
+    invalid: iced_native::image::Handle,
 }
 
-fn load_image_to_conrod_image(
-    renderer: &Renderer,
-    rgba_image: image::RgbaImage,
-) -> conrod_wgpu::Image {
-    let dimensions = rgba_image.dimensions();
-    let texture = renderer.create_texture(rgba_image);
-
-    conrod_wgpu::Image {
-        texture,
-        texture_format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        width: dimensions.0,
-        height: dimensions.1,
-    }
-}
-
-pub struct ConrodBlockMap {
-    map: HashMap<sks::block::Block, conrod_core::image::Id>,
-    invalid: conrod_core::image::Id,
-}
-
-impl ConrodBlockMap {
-    pub fn new(invalid: conrod_core::image::Id) -> Self {
-        ConrodBlockMap {
+impl IcedBlockMap {
+    pub fn new(invalid: iced_native::image::Handle) -> Self {
+        Self {
             map: HashMap::new(),
             invalid,
         }
     }
 
     /// Note blocks have their data stripped on insert.
-    pub fn insert(
-        &mut self,
-        renderer: &Renderer,
-        image_map: &mut conrod_core::image::Map<conrod_wgpu::Image>,
-        mut block: sks::Block,
-        img: image::RgbaImage,
-    ) {
-        if let sks::block::Block::Note { text } = &mut block {
+    pub fn insert(&mut self, mut block: sks::Block, img: BgraImage) {
+        if let sks::Block::Note { text } = &mut block {
             text.clear();
         }
 
-        let img = load_image_to_conrod_image(renderer, img);
-        let img = image_map.insert(img);
+        let img =
+            iced_native::image::Handle::from_pixels(img.width(), img.height(), img.into_vec());
 
         self.map.insert(block, img);
     }
 
-    pub fn get(&self, mut block: sks::Block) -> conrod_core::image::Id {
-        if let sks::block::Block::Note { text } = &mut block {
+    pub fn get(&self, mut block: sks::Block) -> iced_native::image::Handle {
+        if let sks::Block::Note { text } = &mut block {
             text.clear();
         }
 
-        *self.map.get(&block).unwrap_or(&self.invalid)
+        self.map.get(&block).unwrap_or(&self.invalid).clone()
     }
 
     pub fn generate(
         &mut self,
-        renderer: &Renderer,
-        image_map: &mut conrod_core::image::Map<conrod_wgpu::Image>,
         sks_image_renderer: &mut sks::render::ImageRenderer,
         block: sks::Block,
     ) {
@@ -160,12 +131,13 @@ impl ConrodBlockMap {
         });
 
         if let Some(rendered) = rendered {
-            self.insert(&renderer, image_map, block, rendered.clone().into_rgba());
+            self.insert(block, rendered.clone().into_bgra());
         }
     }
 }
 
 /// A Game Level
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Level {
     level_data: Vec<sks::Block>,
     is_dark: bool,
@@ -276,36 +248,22 @@ impl Default for Level {
 
 pub struct App {
     renderer: Renderer,
-    ui: conrod_core::Ui,
-    ids: ui::Ids,
-    font: conrod_core::text::font::Id,
-    image_map: conrod_core::image::Map<conrod_wgpu::Image>,
-
-    background_image: conrod_core::image::Id,
-    invalid_block_image: conrod_core::image::Id,
-
-    conrod_block_map: ConrodBlockMap,
 
     sks_image_renderer: sks::render::ImageRenderer,
 
-    level: Level,
+    iced_state: iced_native::program::State<crate::ui::UiApp>,
+    iced_debug: iced_native::Debug,
+    iced_viewport: iced_wgpu::Viewport,
 }
 
 impl App {
     pub fn new() -> Result<Self, AppError> {
         human_panic::setup_panic!();
 
-        let renderer = futures::executor::block_on(Renderer::new())?;
+        let mut renderer = futures::executor::block_on(Renderer::new())?;
         dbg!("{:#?}", renderer.wgpu_adapter.get_info());
 
         let mut sks_image_renderer = sks::render::ImageRenderer::new();
-
-        let font = Font::from_bytes(FONT_DATA).unwrap();
-        let ui_size = [WINDOW_WIDTH.into(), WINDOW_HEIGHT.into()];
-
-        let mut ui = conrod_core::UiBuilder::new(ui_size).build();
-        let ids = ui::Ids::new(ui.widget_id_generator());
-        let font = ui.fonts.insert(font);
 
         let block_width = WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
         let block_height = WINDOW_HEIGHT / sks::LEVEL_HEIGHT as u32;
@@ -331,59 +289,62 @@ impl App {
         });
         let invalid_block_image = image::DynamicImage::ImageRgba8(invalid_block_image);
 
-        let mut image_map = conrod_core::image::Map::<conrod_wgpu::Image>::new();
-        
-        let invalid_block_image =
-            load_image_to_conrod_image(&renderer, invalid_block_image.into_rgba());
-        let invalid_block_image = image_map.insert(invalid_block_image);
-        
-        let background_image = load_raw_image_to_conrod_image(&renderer, M0_DATA).unwrap();
-        let background_image = image_map.insert(background_image);
+        let mut iced_block_map = IcedBlockMap::new(iced_native::image::Handle::from_pixels(
+            invalid_block_image.width(),
+            invalid_block_image.height(),
+            invalid_block_image.into_bgra().into_vec(),
+        ));
 
-        let mut conrod_block_map = ConrodBlockMap::new(invalid_block_image);
+        let iced_background_image = iced_native::image::Handle::from_memory(M0_DATA.into());
 
         for block in BLOCKS.iter().cloned() {
-            conrod_block_map.generate(&renderer, &mut image_map, &mut sks_image_renderer, block);
+            iced_block_map.generate(&mut sks_image_renderer, block);
         }
-        
-        let level = Level::new();
+
+        let mut iced_debug = iced_native::Debug::new();
+        let iced_viewport_size = iced_core::Size::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+        let iced_viewport = iced_wgpu::Viewport::with_physical_size(iced_viewport_size, 1.0);
+        let iced_app = crate::ui::UiApp::new(iced_block_map, iced_background_image);
+        let iced_state = iced_native::program::State::new(
+            iced_app,
+            iced_viewport.logical_size(),
+            iced_core::Point::new(0.0, 0.0), // conversion::cursor_position(cursor_position, viewport.scale_factor())
+            &mut renderer.iced_renderer,
+            &mut iced_debug,
+        );
 
         Ok(App {
             renderer,
-            ui,
-            ids,
-            font,
-            image_map,
-
-            background_image,
-            invalid_block_image,
-
-            conrod_block_map,
 
             sks_image_renderer,
 
-            level,
+            iced_state,
+            iced_debug,
+            iced_viewport,
         })
     }
 
     pub fn update(&mut self) {
-        let ui_data = ui::UiData {
-            invalid_block_image: self.invalid_block_image,
-            background_image: self.background_image,
-            conrod_block_map: &self.conrod_block_map,
-        };
+        if !self.iced_state.is_queue_empty() {
+            let _ = self.iced_state.update(
+                self.iced_viewport.logical_size(),
+                iced_native::Point::new(0.0, 0.0),
+                None,
+                &mut self.renderer.iced_renderer,
+                &mut self.iced_debug,
+            );
 
-        ui::gui(
-            &mut self.ui.set_widgets(),
-            &mut self.ids,
-            &self.font,
-            self.level.get_level_data(),
-            ui_data,
-        );
+            /*
+            conversion::cursor_position(
+                    cursor_position,
+                    viewport.scale_factor(),
+                )
+            */
+        }
     }
 
     pub fn draw(&mut self) -> Result<(), AppError> {
-        self.renderer.draw_conrod(&self.ui, &self.image_map)?;
+        self.renderer.draw_ui(&self.iced_state, &self.iced_debug)?;
         Ok(())
     }
 
@@ -398,13 +359,17 @@ impl App {
 
 /// Intended to be temp interface
 impl App {
+    pub fn get_level(&self) -> &Level {
+        &self.iced_state.program().level
+    }
+
     pub fn get_level_data(&self) -> &[sks::Block] {
-        &self.level.get_level_data()
+        self.get_level().get_level_data()
     }
 
     pub fn add_block(&mut self, i: usize, block: sks::Block) {
-        let success = self.level.add_block(i, block).is_none();
-        assert!(success);
+        self.iced_state
+            .queue_message(crate::ui::Message::AddBlock { index: i, block });
     }
 
     pub fn get_level_image(&mut self) -> Result<image::DynamicImage, sks::render::RenderError> {
@@ -414,22 +379,31 @@ impl App {
         };
 
         self.sks_image_renderer
-            .render(self.level.get_level_data(), &opts)
+            .render(self.iced_state.program().level.get_level_data(), &opts)
     }
 
-    pub fn import(&mut self, blocks: &[sks::Block]) {
-        self.level = Level::from_block_array(blocks).unwrap();
+    pub fn import(&mut self, blocks: &[sks::Block]) -> Option<()> {
+        let level = Level::from_block_array(blocks)?;
+        self.iced_state
+            .queue_message(crate::ui::Message::ImportLevel { level });
+        Some(())
     }
 
-    pub fn set_dark(&mut self, val: bool) {
-        self.level.set_dark(val);
+    pub fn set_dark(&mut self, dark: bool) {
+        self.iced_state
+            .queue_message(crate::ui::Message::SetDark { dark });
     }
 
     pub fn is_dark(&self) -> bool {
-        self.level.is_dark()
+        self.get_level().is_dark()
     }
 
     pub fn export(&self) -> Option<Vec<sks::Block>> {
-        self.level.export_block_array()
+        self.get_level().export_block_array()
+    }
+
+    pub fn set_grid(&mut self, grid: bool) {
+        self.iced_state
+            .queue_message(crate::ui::Message::SetGrid { grid });
     }
 }

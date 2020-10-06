@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
 license = "MIT"
 build = "build.rs"
-exclude = ["artifacts.json", "index.node"]
+exclude = [ "artifacts.json", "index.node" ]
 edition = "2018"
 
 [lib]
@@ -20,11 +20,5 @@ sks = { path = "lib/sks_legacy", package = "sks_legacy" }
 skeleton-sprint-levelbuilder = { path = "lib/skeleton-sprint-levelbuilder" }
 
 [patch.crates-io]
-# Updates piston-graphics
-conrod_core = { git = "https://github.com/adumbidiot/conrod", branch = "update-piston-graphics" }
-
-# Force static-crt
+# Static crt
 spirv_cross = { git = "https://github.com/adumbidiot/spirv_cross", branch = "static-crt" }
-
-# Updated wgpu
-conrod_wgpu = { git = "https://github.com/adumbidiot/conrod", branch = "update-piston-graphics" }

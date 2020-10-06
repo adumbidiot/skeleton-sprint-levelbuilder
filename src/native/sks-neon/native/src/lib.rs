@@ -2,7 +2,6 @@ mod util;
 
 use neon::prelude::*;
 use sks::*;
-use std::convert::TryInto;
 
 fn export_1d_patch(mut cx: FunctionContext) -> JsResult<JsString> {
     let v = cx.argument::<JsArray>(0)?;
@@ -39,31 +38,74 @@ fn block_array_to_js_array<'a, T: neon::object::This>(
     Ok(js_array.upcast())
 }
 
+fn get_frame<'a>(
+    cx: &mut CallContext<'a, JsLevelBuilder>,
+) -> Result<Handle<'a, JsValue>, neon::result::Throw> {
+    let mut this = cx.this();
+
+    let img_data = {
+        let guard = cx.lock();
+        let mut lvlbuilder = this.borrow_mut(&guard);
+        lvlbuilder.skeleton_sprint_levelbuilder.get_raw_image()
+    };
+
+    let img_data = match img_data {
+        Ok(data) => data,
+        Err(e) => return cx.throw_error(&e.to_string()),
+    };
+
+    let img_data = util::rgba_image_to_image_data(cx, img_data)?;
+    let canvas = util::img_data_to_canvas(cx, img_data)?;
+
+    Ok(canvas.upcast())
+}
+
+fn get_image<'a>(
+    cx: &mut CallContext<'a, JsLevelBuilder>,
+) -> Result<Handle<'a, JsValue>, neon::result::Throw> {
+    let mut this = cx.this();
+
+    let img_data = {
+        let guard = cx.lock();
+        let mut lvlbuilder = this.borrow_mut(&guard);
+        lvlbuilder.render_image()
+    };
+
+    let img_data = match img_data {
+        Ok(data) => data.into_rgba(),
+        Err(_e) => return cx.throw_error("SKS render error"),
+    };
+
+    let img_data = util::rgba_image_to_image_data(cx, img_data)?;
+    let canvas = util::img_data_to_canvas(cx, img_data)?;
+
+    Ok(canvas.upcast())
+}
+
 declare_types! {
     pub class JsLevelBuilder for LevelBuilder {
         init(_cx) {
             Ok(sks::LevelBuilder::new())
         }
-        
+
+        method getFrame(mut cx) {
+            get_frame(&mut cx)
+        }
+
         method getImage(mut cx) {
+            get_image(&mut cx)
+        }
+
+        method setGrid(mut cx) {
+            let grid = cx.argument::<JsBoolean>(0)?.value();
             let mut this = cx.this();
-            let img_data = {
+            {
                 let guard = cx.lock();
                 let mut lvlbuilder = this.borrow_mut(&guard);
-                lvlbuilder.skeleton_sprint_levelbuilder.get_raw_image().expect("Image").into_vec()
-            };
-            
-            let js_img = {
-                let mut js_img = JsArrayBuffer::new(&mut cx, img_data.len().try_into().unwrap())?;
-                let guard = cx.lock();
-                for (i, byte) in js_img.borrow_mut(&guard).as_mut_slice().iter_mut().enumerate() {
-                    *byte = img_data[i];
-                }
+                lvlbuilder.set_grid(grid);
+            }
 
-                js_img
-            };
-
-            Ok(js_img.upcast())
+            Ok(cx.undefined().upcast())
         }
 
         method getLevelData(mut cx) {
@@ -83,7 +125,7 @@ declare_types! {
             let i = cx.argument::<JsNumber>(0)?.value() as usize;
             let block = cx.argument::<JsString>(1)?.value();
             let mut this = cx.this();
-            let msg = {
+            let _msg = {
                 let guard = cx.lock();
                 let mut lvlbuilder = this.borrow_mut(&guard);
                 lvlbuilder.add_block(i, util::builder_internal_to_block(&block).unwrap());

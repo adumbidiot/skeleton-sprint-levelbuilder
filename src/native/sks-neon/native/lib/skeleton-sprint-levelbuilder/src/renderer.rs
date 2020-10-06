@@ -1,5 +1,6 @@
 use crate::WINDOW_HEIGHT;
 use crate::WINDOW_WIDTH;
+use futures::task::SpawnExt;
 use std::convert::TryInto;
 use std::io::Write;
 
@@ -8,19 +9,12 @@ pub enum RenderError {
     MissingAdapter,
     RequestDevice(wgpu::RequestDeviceError),
 
-    CacheWrite(conrod_core::text::rt::gpu_cache::CacheWriteErr),
     Io(std::io::Error),
 }
 
 impl From<wgpu::RequestDeviceError> for RenderError {
     fn from(e: wgpu::RequestDeviceError) -> Self {
         RenderError::RequestDevice(e)
-    }
-}
-
-impl From<conrod_core::text::rt::gpu_cache::CacheWriteErr> for RenderError {
-    fn from(e: conrod_core::text::rt::gpu_cache::CacheWriteErr) -> Self {
-        RenderError::CacheWrite(e)
     }
 }
 
@@ -35,7 +29,6 @@ impl std::fmt::Display for RenderError {
         match self {
             RenderError::MissingAdapter => "could not locate a valid adapter".fmt(f),
             RenderError::RequestDevice(e) => e.fmt(f),
-            RenderError::CacheWrite(e) => e.fmt(f),
             RenderError::Io(e) => e.fmt(f),
         }
     }
@@ -54,7 +47,8 @@ pub struct Renderer {
     pub wgpu_output_buffer: wgpu::Buffer,
     pub wgpu_output_texture: wgpu::Texture,
 
-    pub conrod_renderer: conrod_wgpu::Renderer,
+    pub iced_renderer: iced_wgpu::Renderer,
+    pub iced_staging_belt: wgpu::util::StagingBelt,
 }
 
 impl Renderer {
@@ -113,9 +107,15 @@ impl Renderer {
             label: None,
         });
 
-        const MSAA_SAMPLES: u32 = 1;
-        let conrod_renderer =
-            conrod_wgpu::Renderer::new(&wgpu_device, MSAA_SAMPLES, output_texture_format);
+        let iced_staging_belt = wgpu::util::StagingBelt::new(5 * 1024);
+        let iced_renderer_settings = iced_wgpu::Settings {
+            format: output_texture_format,
+            default_font: Some(crate::FONT_DATA),
+            default_text_size: 20, // Default size
+            antialiasing: None,
+        };
+        let iced_backend = iced_wgpu::Backend::new(&wgpu_device, iced_renderer_settings);
+        let iced_renderer = iced_wgpu::Renderer::new(iced_backend);
 
         Ok(Renderer {
             wgpu_instance,
@@ -128,10 +128,13 @@ impl Renderer {
             wgpu_output_buffer,
             wgpu_output_texture,
 
-            conrod_renderer,
+            iced_renderer,
+            iced_staging_belt,
         })
     }
 
+    // Might be useful later
+    #[allow(dead_code)]
     pub fn create_texture(&self, image: image::RgbaImage) -> wgpu::Texture {
         let (width, height) = image.dimensions();
         let texture_extent = wgpu::Extent3d {
@@ -184,75 +187,30 @@ impl Renderer {
         texture
     }
 
-    pub fn draw_conrod(
+    pub fn draw_ui(
         &mut self,
-        ui: &conrod_core::Ui,
-        image_map: &conrod_core::image::Map<conrod_wgpu::Image>,
+        iced_state: &iced_native::program::State<crate::ui::UiApp>,
+        iced_debug: &iced_native::Debug,
     ) -> Result<(), RenderError> {
-        let primitives = match ui.draw_if_changed() {
-            None => return Ok(()),
-            Some(ps) => ps,
-        };
-
         let mut encoder = self
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-        let scale_factor = 1.0;
-        let [win_w, win_h]: [f32; 2] = [WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32];
-        let viewport = [0.0, 0.0, win_w, win_h];
-        if let Some(cmd) =
-            self.conrod_renderer
-                .fill(&image_map, viewport, scale_factor, primitives)?
         {
-            cmd.load_buffer_and_encode(&self.wgpu_device, &mut encoder);
-        }
+            let viewport_size =
+                iced_core::Size::new(crate::WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32);
+            let viewport = iced_wgpu::Viewport::with_physical_size(viewport_size, 1.0);
+            let _mouse_interaction = self.iced_renderer.backend_mut().draw(
+                &self.wgpu_device,
+                &mut self.iced_staging_belt,
+                &mut encoder,
+                &self.wgpu_output_texture.create_view(&Default::default()),
+                &viewport,
+                iced_state.primitive(),
+                &iced_debug.overlay(),
+            );
 
-        let color_attachment_descriptor = wgpu::RenderPassColorAttachmentDescriptor {
-            attachment: &self
-                .wgpu_output_texture
-                .create_view(&wgpu::TextureViewDescriptor::default()),
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                store: true,
-            },
-        };
-
-        let render_pass_descriptor = wgpu::RenderPassDescriptor {
-            color_attachments: &[color_attachment_descriptor],
-            depth_stencil_attachment: None,
-        };
-
-        let render = self.conrod_renderer.render(&self.wgpu_device, image_map);
-
-        {
-            let mut render_pass = encoder.begin_render_pass(&render_pass_descriptor);
-            let slot = 0;
-            render_pass.set_vertex_buffer(slot, render.vertex_buffer.slice(..));
-            let instance_range = 0..1;
-
-            for cmd in render.commands {
-                match cmd {
-                    conrod_wgpu::RenderPassCommand::SetPipeline { pipeline } => {
-                        render_pass.set_pipeline(pipeline);
-                    }
-                    conrod_wgpu::RenderPassCommand::SetBindGroup { bind_group } => {
-                        render_pass.set_bind_group(0, bind_group, &[]);
-                    }
-                    conrod_wgpu::RenderPassCommand::SetScissor {
-                        top_left,
-                        dimensions,
-                    } => {
-                        let [x, y] = top_left;
-                        let [w, h] = dimensions;
-                        render_pass.set_scissor_rect(x, y, w, h);
-                    }
-                    conrod_wgpu::RenderPassCommand::Draw { vertex_range } => {
-                        render_pass.draw(vertex_range, instance_range.clone());
-                    }
-                }
-            }
+            self.iced_staging_belt.finish();
         }
 
         encoder.copy_texture_to_buffer(
@@ -273,6 +231,14 @@ impl Renderer {
         );
 
         self.wgpu_queue.submit(Some(encoder.finish()));
+
+        let mut local_pool = futures::executor::LocalPool::new();
+        local_pool
+            .spawner()
+            .spawn(self.iced_staging_belt.recall())
+            .expect("Recall staging buffers");
+
+        local_pool.run_until_stalled();
 
         Ok(())
     }

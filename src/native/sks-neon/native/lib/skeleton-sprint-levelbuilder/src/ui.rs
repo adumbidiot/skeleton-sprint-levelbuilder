@@ -1,62 +1,67 @@
-use crate::ConrodBlockMap;
-use conrod_core::widget;
-use conrod_core::widget_ids;
-use conrod_core::Positionable;
-use conrod_core::Sizeable;
-use conrod_core::Widget;
-use sks::block::Block as SksBlock;
-use std::convert::TryFrom;
+mod widgets;
 
-widget_ids! {
-    pub struct Ids {
-        background,
-
-        blocks[],
-
-        text
-    }
+#[derive(Debug)]
+pub enum Message {
+    AddBlock { index: usize, block: sks::Block },
+    ImportLevel { level: crate::Level },
+    SetDark { dark: bool },
+    SetGrid { grid: bool },
 }
 
-pub fn gui(
-    ui: &mut conrod_core::UiCell,
-    ids: &mut Ids,
-    _font: &conrod_core::text::font::Id,
-    level_data: &[SksBlock],
-    ui_data: UiData<'_>,
-) {
-    widget::Image::new(ui_data.background_image)
-        .w_h(crate::WINDOW_WIDTH.into(), crate::WINDOW_HEIGHT.into())
-        .middle()
-        .set(ids.background, ui);
+pub struct UiApp {
+    pub level: crate::Level,
+    grid: bool,
 
-    let block_size = crate::WINDOW_WIDTH / u32::try_from(sks::LEVEL_WIDTH).unwrap();
+    iced_block_map: crate::IcedBlockMap,
+    iced_background_image: iced_native::image::Handle,
+}
 
-    let mut id_list_walk = ids.blocks.walk();
-    for (i, block) in level_data.iter().enumerate() {
-        let ui_block_id = id_list_walk.next(&mut ids.blocks, &mut ui.widget_id_generator());
+impl UiApp {
+    pub fn new(
+        iced_block_map: crate::IcedBlockMap,
+        iced_background_image: iced_native::image::Handle,
+    ) -> Self {
+        Self {
+            level: crate::Level::new(),
+            grid: true,
 
-        let img = ui_data.conrod_block_map.get(block.clone());
-
-        let i_u32 = u32::try_from(i).unwrap();
-        let level_width_u32 = u32::try_from(sks::LEVEL_WIDTH).unwrap();
-        let x = f64::from((i_u32 / level_width_u32) * block_size);
-        let y = f64::from((i_u32 % level_width_u32) * block_size);
-
-        if !block.is_empty() {
-            widget::Image::new(img)
-                .parent(ids.background)
-                .w_h(block_size.into(), block_size.into())
-                .parent(ids.background)
-                .top_left_with_margins(x, y)
-                .set(ui_block_id, ui);
+            iced_block_map,
+            iced_background_image,
         }
     }
-
-    // widget::Text::new("TEST HELLO 123").set(ids.text, ui);
 }
 
-pub struct UiData<'a> {
-    pub invalid_block_image: conrod_core::image::Id,
-    pub background_image: conrod_core::image::Id,
-    pub conrod_block_map: &'a ConrodBlockMap,
+impl iced_native::Program for UiApp {
+    type Renderer = iced_wgpu::Renderer;
+    type Message = Message;
+
+    fn update(&mut self, message: Message) -> iced_native::Command<Message> {
+        match message {
+            Message::AddBlock { index, block } => {
+                let success = self.level.add_block(index, block).is_none();
+                assert!(success);
+            }
+            Message::ImportLevel { level } => {
+                self.level = level;
+            }
+            Message::SetDark { dark } => {
+                self.level.set_dark(dark);
+            }
+            Message::SetGrid { grid } => {
+                self.grid = grid;
+            }
+        }
+
+        iced_native::Command::none()
+    }
+
+    fn view(&mut self) -> iced_native::Element<Self::Message, Self::Renderer> {
+        self::widgets::Board::new(
+            &self.level,
+            &self.iced_background_image,
+            &self.iced_block_map,
+        )
+        .grid(self.grid)
+        .into()
+    }
 }
