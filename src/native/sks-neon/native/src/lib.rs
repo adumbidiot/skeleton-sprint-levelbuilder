@@ -96,6 +96,103 @@ declare_types! {
             get_image(&mut cx)
         }
 
+        method emitMouseButtonEvent(mut cx) {
+            let button = cx.argument::<JsString>(0)?.value();
+            let kind = cx.argument::<JsString>(1)?.value();
+
+            let mut this = cx.this();
+            {
+                let guard = cx.lock();
+                let mut lvlbuilder = this.borrow_mut(&guard);
+
+                match (button.as_str(), kind.as_str()) {
+                    ("left", "down") => {
+                        lvlbuilder.skeleton_sprint_levelbuilder.emit_left_mouse_button_down();
+                    },
+                    ("right", "down") => {
+                        lvlbuilder.skeleton_sprint_levelbuilder.emit_right_mouse_button_down();
+                    },
+                    ("left", "up") => {
+                        lvlbuilder.skeleton_sprint_levelbuilder.emit_left_mouse_button_up();
+                    },
+                    ("right", "up") => {
+                        lvlbuilder.skeleton_sprint_levelbuilder.emit_right_mouse_button_up();
+                    },
+                    unknown => panic!("Unknown: {:#?}", unknown),
+                }
+            }
+
+            Ok(cx.undefined().upcast())
+        }
+
+        method update(mut cx) {
+            let mut this = cx.this();
+            {
+                let guard = cx.lock();
+                let mut lvlbuilder = this.borrow_mut(&guard);
+                lvlbuilder.update();
+            }
+
+            Ok(cx.undefined().upcast())
+        }
+
+        method updateMousePosition(mut cx) {
+            let x = cx.argument::<JsNumber>(0)?.value();
+            let y = cx.argument::<JsNumber>(1)?.value();
+
+            let mut this = cx.this();
+            {
+                let guard = cx.lock();
+                let mut lvlbuilder = this.borrow_mut(&guard);
+                lvlbuilder.update_mouse_position(x, y);
+            }
+
+            Ok(cx.undefined().upcast())
+        }
+
+        method setActive(mut cx) {
+            let mut this = cx.this();
+
+            let block = {
+                let block = cx.argument::<JsValue>(0)?;
+                if block.is_a::<JsNull>() {
+                    None
+                } else {
+                    let block = block.downcast_or_throw::<JsString, _>(&mut cx)?.value();
+                    let block = util::builder_internal_to_block(&block).unwrap();
+                    Some(block)
+                }
+            };
+
+            {
+                let guard = cx.lock();
+                let mut lvlbuilder = this.borrow_mut(&guard);
+                lvlbuilder.set_active_block(block);
+            }
+
+            Ok(cx.undefined().upcast())
+        }
+
+        method getActive(mut cx) {
+            let this = cx.this();
+            let data = {
+                let guard = cx.lock();
+                let lvlbuilder = this.borrow(&guard);
+                lvlbuilder.get_active_block().cloned()
+            };
+
+            let active = match data {
+                Some(data) => {
+                    cx.string(util::block_to_builder_internal(&data)).upcast()
+                }
+                None => {
+                    cx.null().upcast()
+                }
+            };
+
+            Ok(active)
+        }
+
         method setGrid(mut cx) {
             let grid = cx.argument::<JsBoolean>(0)?.value();
             let mut this = cx.this();

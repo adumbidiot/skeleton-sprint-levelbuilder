@@ -254,6 +254,7 @@ pub struct App {
     iced_state: iced_native::program::State<crate::ui::UiApp>,
     iced_debug: iced_native::Debug,
     iced_viewport: iced_wgpu::Viewport,
+    iced_cursor_position: iced_core::Point,
 }
 
 impl App {
@@ -305,10 +306,11 @@ impl App {
         let iced_viewport_size = iced_core::Size::new(WINDOW_WIDTH, WINDOW_HEIGHT);
         let iced_viewport = iced_wgpu::Viewport::with_physical_size(iced_viewport_size, 1.0);
         let iced_app = crate::ui::UiApp::new(iced_block_map, iced_background_image);
+        let iced_cursor_position = iced_core::Point::new(0.0, 0.0);
         let iced_state = iced_native::program::State::new(
             iced_app,
             iced_viewport.logical_size(),
-            iced_core::Point::new(0.0, 0.0), // conversion::cursor_position(cursor_position, viewport.scale_factor())
+            iced_cursor_position,
             &mut renderer.iced_renderer,
             &mut iced_debug,
         );
@@ -321,6 +323,7 @@ impl App {
             iced_state,
             iced_debug,
             iced_viewport,
+            iced_cursor_position,
         })
     }
 
@@ -328,18 +331,11 @@ impl App {
         if !self.iced_state.is_queue_empty() {
             let _ = self.iced_state.update(
                 self.iced_viewport.logical_size(),
-                iced_native::Point::new(0.0, 0.0),
+                self.iced_cursor_position,
                 None,
                 &mut self.renderer.iced_renderer,
                 &mut self.iced_debug,
             );
-
-            /*
-            conversion::cursor_position(
-                    cursor_position,
-                    viewport.scale_factor(),
-                )
-            */
         }
     }
 
@@ -359,6 +355,15 @@ impl App {
 
 /// Intended to be temp interface
 impl App {
+    pub fn get_active_block(&self) -> Option<&sks::Block> {
+        self.iced_state.program().active_block.as_ref()
+    }
+
+    pub fn set_active_block(&mut self, block: Option<sks::Block>) {
+        self.iced_state
+            .queue_message(crate::ui::Message::ChangeActiveBlock { block });
+    }
+
     pub fn get_level(&self) -> &Level {
         &self.iced_state.program().level
     }
@@ -405,5 +410,42 @@ impl App {
     pub fn set_grid(&mut self, grid: bool) {
         self.iced_state
             .queue_message(crate::ui::Message::SetGrid { grid });
+    }
+
+    pub fn update_mouse_position(&mut self, x: f64, y: f64) {
+        self.iced_cursor_position = iced_core::Point::new(x as f32, y as f32);
+        let event = iced_native::Event::Mouse(iced_native::mouse::Event::CursorMoved {
+            x: x as f32,
+            y: y as f32,
+        });
+        self.iced_state.queue_event(event);
+    }
+
+    pub fn emit_left_mouse_button_down(&mut self) {
+        let event = iced_native::Event::Mouse(iced_native::mouse::Event::ButtonPressed(
+            iced_native::mouse::Button::Left,
+        ));
+        self.iced_state.queue_event(event);
+    }
+
+    pub fn emit_right_mouse_button_down(&mut self) {
+        let event = iced_native::Event::Mouse(iced_native::mouse::Event::ButtonPressed(
+            iced_native::mouse::Button::Right,
+        ));
+        self.iced_state.queue_event(event);
+    }
+
+    pub fn emit_left_mouse_button_up(&mut self) {
+        let event = iced_native::Event::Mouse(iced_native::mouse::Event::ButtonReleased(
+            iced_native::mouse::Button::Left,
+        ));
+        self.iced_state.queue_event(event);
+    }
+
+    pub fn emit_right_mouse_button_up(&mut self) {
+        let event = iced_native::Event::Mouse(iced_native::mouse::Event::ButtonReleased(
+            iced_native::mouse::Button::Right,
+        ));
+        self.iced_state.queue_event(event);
     }
 }

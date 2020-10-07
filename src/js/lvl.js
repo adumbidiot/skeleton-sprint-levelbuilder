@@ -4,7 +4,6 @@ window.sks = require('sks-neon');
 // Browser Code
 window.lvl = function (name) {
     this.name = name;
-    this.active = null;
     var self = this;
 
     this.board = document.createElement('canvas');
@@ -12,64 +11,31 @@ window.lvl = function (name) {
     this.board.width = 1920;
     this.board.height = 1080;
     this.board.style.cssText = 'width: 80%;';
-    this.bgCtx = this.board.getContext('2d');
 
-    this.levelBuilder = new window.sks.LevelBuilder();
+    this.levelBuilder = new window.sks.LevelBuilder(this.board);
     console.log(this.levelBuilder);
 
     let loopFunc = function () {
         if (self.levelBuilder.isDirty()) {
             let start = performance.now();
-            self.bgCtx.clearRect(0, 0, self.board.width, self.board.height);
-            self.levelBuilder.drawFrame(self.bgCtx);
+            self.levelBuilder.drawFrame();
             let end = performance.now();
             console.log("Dirty Redraw: ", end - start);
         }
+
+        self.levelBuilder.update();
         requestAnimationFrame(loopFunc);
     }
 
     loopFunc();
-
-    let boardHandler = (event) => {
-        const blockSize = this.board.width / 32;
-        const rect = this.board.getBoundingClientRect();
-        const xRaw = event.clientX - rect.left;
-        const yRaw = event.clientY - rect.top;
-
-        const scaleX = this.board.width / rect.width;
-        const scaleY = this.board.height / rect.height;
-
-        const x = xRaw * scaleX;
-        const y = yRaw * scaleY;
-
-        const index = Math.floor(x / blockSize) + (Math.floor(y / blockSize) * 32);
-
-        // Give time for mouse states to update
-        setTimeout(() => {
-            if (window.lvl.mouseDownRight) {
-                this.render(index, this.active);
-            }
-
-            if (window.lvl.mouseDownLeft) {
-                this.render(index, "delete");
-            }
-        }, 0);
-
-        event.preventDefault();
-    };
-
-    this.board.addEventListener("mousemove", boardHandler);
-    this.board.addEventListener("mousedown", boardHandler);
-    this.board.addEventListener("mouseup", boardHandler);
 }
 
-// Renders a specified block at specified index
-window.lvl.prototype.render = function (index, blockType) {
-    if (!this.active)
-        return;
-    if (blockType == 'delete')
-        blockType = 'null';
-    this.levelBuilder.addBlock(index, blockType);
+window.lvl.prototype.setActive = function (active) {
+    this.levelBuilder.setActive(active);
+}
+
+window.lvl.prototype.getActive = function () {
+    return this.levelBuilder.getActive();
 }
 
 window.lvl.prototype.setDark = function (value) {
@@ -79,7 +45,7 @@ window.lvl.prototype.setDark = function (value) {
 window.lvl.prototype.disableGrid = function () {
     this.levelBuilder.disableGrid();
 }
-//Enables grid
+// Enables grid
 window.lvl.prototype.enableGrid = function () {
     this.levelBuilder.enableGrid();
 }
@@ -104,21 +70,23 @@ lvl.prototype.import = function (data) {
     return res;
 }
 
+/*
 function checkCtrlZ() {
-    if (window.lvl.zDown == true && window.lvl.ctrlDown == true && history.length > 0) {
-        var undo = level.history[level.history.length - 1];
-        console.log(undo);
-        level.render(undo.index, undo.oldBlock);
-        level.history.shift();
-    }
+if (window.lvl.zDown == true && window.lvl.ctrlDown == true && history.length > 0) {
+var undo = level.history[level.history.length - 1];
+console.log(undo);
+level.render(undo.index, undo.oldBlock);
+level.history.shift();
 }
+}
+ */
 
 window.lvl.mouseDown = false;
 window.lvl.mouseDownLeft = false;
 window.lvl.mouseDownRight = false;
 
-window.lvl.ctrlDown = false;
-window.lvl.zDown = false;
+// window.lvl.ctrlDown = false;
+// window.lvl.zDown = false;
 document.onmousedown = function (e) {
     if (e.button == 0) {
         window.lvl.mouseDownRight = true;
@@ -135,32 +103,34 @@ document.onmouseup = function (e) {
     }
     window.lvl.mouseDown = false;
 }
+/*
 document.onkeydown = function (event) {
-    switch (event.keyCode) {
-    case 17: {
-            window.lvl.ctrlDown = true;
-            break;
-        }
-    case 90: {
-            window.lvl.zDown = true;
-            break;
-        }
-    }
-    checkCtrlZ();
+switch (event.keyCode) {
+case 17: {
+window.lvl.ctrlDown = true;
+break;
+}
+case 90: {
+window.lvl.zDown = true;
+break;
+}
+}
+checkCtrlZ();
 }
 document.onkeyup = function (event) {
-    switch (event.keyCode) {
-    case 17: {
-            window.lvl.ctrlDown = false;
-            break;
-        }
-    case 90: {
-            window.lvl.zDown = false;
-            break;
-        }
-    }
-    checkCtrlZ();
+switch (event.keyCode) {
+case 17: {
+window.lvl.ctrlDown = false;
+break;
 }
+case 90: {
+window.lvl.zDown = false;
+break;
+}
+}
+checkCtrlZ();
+}
+ */
 
 // Electron stuff
 try {
@@ -222,7 +192,6 @@ if (greenworks.initAPI()) {
 window.level = new lvl('build');
 
 // Util
-
 async function getFilename() {
     let filename = await window.dialog.showOpenDialog();
     if (!filename) {

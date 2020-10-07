@@ -6,14 +6,19 @@ pub enum Message {
     ImportLevel { level: crate::Level },
     SetDark { dark: bool },
     SetGrid { grid: bool },
+    ChangeActiveBlock { block: Option<sks::Block> },
 }
 
 pub struct UiApp {
     pub level: crate::Level,
+    pub active_block: Option<sks::Block>,
+
     grid: bool,
 
     iced_block_map: crate::IcedBlockMap,
     iced_background_image: iced_native::image::Handle,
+
+    board_state: widgets::board::State,
 }
 
 impl UiApp {
@@ -23,10 +28,14 @@ impl UiApp {
     ) -> Self {
         Self {
             level: crate::Level::new(),
+            active_block: None,
+
             grid: true,
 
             iced_block_map,
             iced_background_image,
+
+            board_state: widgets::board::State::new(),
         }
     }
 }
@@ -50,18 +59,36 @@ impl iced_native::Program for UiApp {
             Message::SetGrid { grid } => {
                 self.grid = grid;
             }
+            Message::ChangeActiveBlock { block } => {
+                self.active_block = block;
+            }
         }
 
         iced_native::Command::none()
     }
 
     fn view(&mut self) -> iced_native::Element<Self::Message, Self::Renderer> {
-        self::widgets::Board::new(
-            &self.level,
-            &self.iced_background_image,
-            &self.iced_block_map,
-        )
-        .grid(self.grid)
-        .into()
+        iced_native::Row::new()
+            .push(
+                iced_native::widget::Container::new(
+                    self::widgets::Board::new(
+                        &self.level,
+                        &self.iced_background_image,
+                        &self.iced_block_map,
+                        &mut self.board_state,
+                    )
+                    .grid(self.grid)
+                    .active_block(self.active_block.as_ref()),
+                )
+                .width(iced_core::Length::FillPortion(4)),
+            )
+            /*
+            .push(
+                iced_native::widget::Text::new("Test")
+                    .size(50)
+                    .width(iced_core::Length::FillPortion(1)),
+            )
+            .spacing(20)*/
+            .into()
     }
 }
