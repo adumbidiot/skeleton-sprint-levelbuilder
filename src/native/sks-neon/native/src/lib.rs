@@ -96,6 +96,31 @@ declare_types! {
             get_image(&mut cx)
         }
 
+        method emitKeyboardEvent(mut cx) {
+            let kind = cx.argument::<JsString>(0)?.value();
+            let key = cx.argument::<JsNumber>(1)?.value();
+            
+            // TODO: Modifiers?
+
+            let mut this = cx.this();
+            {
+                let guard = cx.lock();
+                let mut lvlbuilder = this.borrow_mut(&guard);
+
+                match kind.as_str() {
+                    "down" => {
+                        lvlbuilder.skeleton_sprint_levelbuilder.emit_keyboard_key_down(key as u64);
+                    },
+                    "up" => {
+                        lvlbuilder.skeleton_sprint_levelbuilder.emit_keyboard_key_up(key as u64);
+                    },
+                    unknown => panic!("Unknown: {:#?}", unknown),
+                }
+            }
+
+            Ok(cx.undefined().upcast())
+        }
+
         method emitMouseButtonEvent(mut cx) {
             let button = cx.argument::<JsString>(0)?.value();
             let kind = cx.argument::<JsString>(1)?.value();
@@ -216,19 +241,6 @@ declare_types! {
             };
 
             Ok(level_data)
-        }
-
-        method addBlock(mut cx) {
-            let i = cx.argument::<JsNumber>(0)?.value() as usize;
-            let block = cx.argument::<JsString>(1)?.value();
-            let mut this = cx.this();
-            let _msg = {
-                let guard = cx.lock();
-                let mut lvlbuilder = this.borrow_mut(&guard);
-                lvlbuilder.add_block(i, util::builder_internal_to_block(&block).unwrap());
-            };
-
-            Ok(cx.null().upcast())
         }
 
         method export(mut cx) {

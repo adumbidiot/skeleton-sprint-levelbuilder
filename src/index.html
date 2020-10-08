@@ -225,8 +225,9 @@
 		</style>
 	</head>
 	<body style="background-color: #303030">
-        <tool-bar style="z-index: -1;"></tool-bar>
-        <div id="placeholder"></div>
+        <div id="placeholder">
+            <tool-bar></tool-bar>
+        </div>
         <div style="width:800px; bottom:-20px; position:relative; background-color: #777777; border: 2px solid black; height: 50px; border-radius: 50px;">
             <paper-button raised onclick="exportWindow.main.open()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
             <paper-button raised onclick="openImportPopup()" class = "import" style="position:absolute; top:5px; height: 40px; left:125px;">Import</paper-button>

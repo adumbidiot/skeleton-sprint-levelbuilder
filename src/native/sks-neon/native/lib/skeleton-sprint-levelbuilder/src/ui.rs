@@ -1,5 +1,13 @@
 mod widgets;
 
+use iced_core::Point;
+use iced_core::Rectangle;
+
+/// Assumes it CAN be translated infallibly. TODO: Do i make this return an option?
+pub fn get_relative_position(bounds: &Rectangle, pos: &Point) -> Point {
+    Point::new(pos.x - bounds.x, pos.y - bounds.y)
+}
+
 #[derive(Debug)]
 pub enum Message {
     AddBlock { index: usize, block: sks::Block },
@@ -17,14 +25,17 @@ pub struct UiApp {
 
     iced_block_map: crate::IcedBlockMap,
     iced_background_image: iced_native::image::Handle,
+    iced_trash_bin_image: iced_native::image::Handle,
 
     board_state: widgets::board::State,
+    tool_bar_state: widgets::tool_bar::State,
 }
 
 impl UiApp {
     pub fn new(
         iced_block_map: crate::IcedBlockMap,
         iced_background_image: iced_native::image::Handle,
+        iced_trash_bin_image: iced_native::image::Handle,
     ) -> Self {
         Self {
             level: crate::Level::new(),
@@ -34,8 +45,10 @@ impl UiApp {
 
             iced_block_map,
             iced_background_image,
+            iced_trash_bin_image,
 
             board_state: widgets::board::State::new(),
+            tool_bar_state: widgets::tool_bar::State::new(),
         }
     }
 }
@@ -47,8 +60,7 @@ impl iced_native::Program for UiApp {
     fn update(&mut self, message: Message) -> iced_native::Command<Message> {
         match message {
             Message::AddBlock { index, block } => {
-                let success = self.level.add_block(index, block).is_none();
-                assert!(success);
+                assert!(self.level.add_block(index, block).is_none());
             }
             Message::ImportLevel { level } => {
                 self.level = level;
@@ -68,10 +80,16 @@ impl iced_native::Program for UiApp {
     }
 
     fn view(&mut self) -> iced_native::Element<Self::Message, Self::Renderer> {
+        use self::widgets::Board;
+        use self::widgets::ToolBar;
+        use iced_core::Color;
+        use iced_core::Length;
+        use iced_graphics::container;
+
         iced_native::Row::new()
             .push(
                 iced_native::widget::Container::new(
-                    self::widgets::Board::new(
+                    Board::new(
                         &self.level,
                         &self.iced_background_image,
                         &self.iced_block_map,
@@ -80,15 +98,46 @@ impl iced_native::Program for UiApp {
                     .grid(self.grid)
                     .active_block(self.active_block.as_ref()),
                 )
-                .width(iced_core::Length::FillPortion(4)),
+                .padding(20)
+                .style(Theme)
+                .center_x()
+                .center_y()
+                .height(Length::Fill)
+                .width(Length::FillPortion(4)),
             )
-            /*
             .push(
-                iced_native::widget::Text::new("Test")
-                    .size(50)
-                    .width(iced_core::Length::FillPortion(1)),
+                iced_native::Container::new(ToolBar::new(
+                    &self.iced_block_map,
+                    &mut self.tool_bar_state,
+                    &self.iced_trash_bin_image,
+                ))
+                .style(Theme),
             )
-            .spacing(20)*/
+            .spacing(20)
             .into()
+    }
+}
+
+// Kinda-Hack for: https://github.com/hecrj/iced/issues/476. *sigh*
+pub struct Theme;
+
+impl From<Theme> for Box<dyn iced_graphics::container::StyleSheet> {
+    fn from(theme: Theme) -> Self {
+        Container.into()
+    }
+}
+
+pub struct Container;
+
+impl iced_graphics::container::StyleSheet for Container {
+    fn style(&self) -> iced_graphics::container::Style {
+        use iced_core::Color;
+        use iced_graphics::container;
+
+        container::Style {
+            background: Color::from_rgb8(0x77, 0x77, 0x77).into(),
+            text_color: Color::WHITE.into(),
+            ..container::Style::default()
+        }
     }
 }

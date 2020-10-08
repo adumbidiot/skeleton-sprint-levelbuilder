@@ -1,3 +1,4 @@
+use crate::ui::get_relative_position;
 use iced_core::Rectangle;
 use iced_graphics::{Backend, Defaults, Primitive, Renderer};
 use iced_native::Clipboard;
@@ -101,7 +102,7 @@ where
 
         layout::Node::new(size)
     }
-    
+
     fn on_event(
         &mut self,
         event: Event,
@@ -111,36 +112,41 @@ where
         _renderer: &Renderer<B>,
         _clipboard: Option<&dyn Clipboard>,
     ) {
+        let layout_bounds = layout.bounds();
+        let block_size = layout_bounds.width / sks::LEVEL_WIDTH as f32;
+
         match event {
-            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
-                self.state.left_mouse_down = true;
-
-                let layout_bounds = layout.bounds();
-                let block_size = layout_bounds.width / sks::LEVEL_WIDTH as f32;
-
-                if layout_bounds.contains(cursor_position) {
-                    let index = (cursor_position.x / block_size) as usize
-                        + ((cursor_position.y / block_size) as usize * sks::LEVEL_WIDTH);
-
-                    if let Some(block) = self.active_block.cloned() {
-                        messages.push(crate::ui::Message::AddBlock { index, block });
+            Event::Mouse(mouse::Event::ButtonPressed(button)) => {
+                match button {
+                    mouse::Button::Left => {
+                        self.state.left_mouse_down = true;
                     }
+                    mouse::Button::Right => {
+                        self.state.right_mouse_down = true;
+                    }
+                    _ => {}
                 }
-            }
-            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) => {
-                self.state.right_mouse_down = true;
-
-                let layout_bounds = layout.bounds();
-                let block_size = layout_bounds.width / sks::LEVEL_WIDTH as f32;
 
                 if layout_bounds.contains(cursor_position) {
-                    let index = (cursor_position.x / block_size) as usize
-                        + ((cursor_position.y / block_size) as usize * sks::LEVEL_WIDTH);
+                    let rel_pos = get_relative_position(&layout_bounds, &cursor_position);
 
-                    messages.push(crate::ui::Message::AddBlock {
-                        index,
-                        block: sks::Block::Empty,
-                    });
+                    let index = (rel_pos.x / block_size) as usize
+                        + ((rel_pos.y / block_size) as usize * sks::LEVEL_WIDTH);
+
+                    match button {
+                        mouse::Button::Left => {
+                            if let Some(block) = self.active_block.cloned() {
+                                messages.push(crate::ui::Message::AddBlock { index, block });
+                            }
+                        }
+                        mouse::Button::Right => {
+                            messages.push(crate::ui::Message::AddBlock {
+                                index,
+                                block: sks::Block::Empty,
+                            });
+                        }
+                        _ => {}
+                    }
                 }
             }
             Event::Mouse(mouse::Event::ButtonReleased(button)) => match button {
@@ -153,12 +159,11 @@ where
                 _ => {}
             },
             Event::Mouse(iced_native::mouse::Event::CursorMoved { x, y }) => {
-                let layout_bounds = layout.bounds();
-                let block_size = layout_bounds.width / sks::LEVEL_WIDTH as f32;
-
                 if layout_bounds.contains(Point::new(x, y)) {
-                    let index = (cursor_position.x / block_size) as usize
-                        + ((cursor_position.y / block_size) as usize * sks::LEVEL_WIDTH);
+                    let rel_pos = get_relative_position(&layout_bounds, &cursor_position);
+
+                    let index = (rel_pos.x / block_size) as usize
+                        + ((rel_pos.y / block_size) as usize * sks::LEVEL_WIDTH);
                     if self.state.left_mouse_down {
                         if let Some(block) = self.active_block.cloned() {
                             messages.push(crate::ui::Message::AddBlock { index, block });

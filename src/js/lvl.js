@@ -10,7 +10,7 @@ window.lvl = function (name) {
     this.board.id = this.name;
     this.board.width = 1920;
     this.board.height = 1080;
-    this.board.style.cssText = 'width: 80%;';
+    this.board.style.cssText = 'width: 80%;'; // Stay at 80% until we can move the bottom bar into rust
 
     this.levelBuilder = new window.sks.LevelBuilder(this.board);
     console.log(this.levelBuilder);
@@ -80,29 +80,8 @@ level.history.shift();
 }
 }
  */
-
-window.lvl.mouseDown = false;
-window.lvl.mouseDownLeft = false;
-window.lvl.mouseDownRight = false;
-
 // window.lvl.ctrlDown = false;
 // window.lvl.zDown = false;
-document.onmousedown = function (e) {
-    if (e.button == 0) {
-        window.lvl.mouseDownRight = true;
-    } else if (e.button == 2) {
-        window.lvl.mouseDownLeft = true;
-    }
-    window.lvl.mouseDown = true;
-}
-document.onmouseup = function (e) {
-    if (e.button == 0) {
-        window.lvl.mouseDownRight = false;
-    } else if (e.button == 2) {
-        window.lvl.mouseDownLeft = false;
-    }
-    window.lvl.mouseDown = false;
-}
 /*
 document.onkeydown = function (event) {
 switch (event.keyCode) {

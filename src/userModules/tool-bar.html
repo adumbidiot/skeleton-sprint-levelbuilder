@@ -8,129 +8,22 @@
                 position:absolute;
                 right:10px;
                 top:10px;
-                height:450px;
-                width:150px;
+                height:50px;
+                width:50px;
                 outline: 1px solid black; 
                 background-image: url('../images/background.png');
 				z-index: 3;
             }
-            .block{
+			#note{
                 position:absolute;
                 width: 50px;
 				height: 50px;
-            }
-            #block{
-                top:0px;
-                left:0px;
-            }
-            #block_key{
-                top:50px;
-                left:0px;
-            }
-            #item_key{
-                top:100px;
-                left:0px;
-            }
-            #decoration_scaffold{
-                top:150px;
-                left:0px;
-            }
-            #decoration_sconce{
-                top:200px;
-                left:0px;
-            }
-            #toggleblocksolid{
-                top:250px;
-                left:0px;
-            }
-            #toggleblockphase{
-                top:300px;
-                left:0px;
-            }
-            #switch{
-                top:350px;
-                left:0px;
-            }
-            #powerupburrow{
-                top:0px;
-                right:50px;
-            }
-			#poweruprecall{
-				left: 0px;
-				bottom: 0px;
-			}
-            #onewaywalldown{
-                top:50px;
-                right:50px;
-            }   
-            #onewaywallleft{
-                top:100px;
-                right:50px;
-            }
-            #onewaywallright{
-                top:200px;
-                right:50px;
-            }
-			#onewaywallup{
-				top:150px;
-				right:50px;
-			}
-			#pipe_in{
-				top:250px;
-				right:50px;
-			}
-			#pipe_out{
-				top: 300px;
-				right:50px;	
-			}
-			#pipe_phase{
-				top: 350px;
-				right:50px;	
-			}
-			#pipe_solid{
-				top: 400px;
-				right:50px;	
-			}
-			#note{
 				top:0px;
-                right:0px;
+                left:0px;
 			}
-            #main{
-                top:50px;
-                right:0px; 
-            }
-			#exit{
-                top:100px;
-                right:0px;
-            }
-            #delete{
-                top:150px;
-                right:0px;
-            }
         </style>
 	    <div id="container" on-click="clickblock" on-dragstart="dragstartblock">
-			<img src="./images/block.png" id = "block" alt = "block" class="block"/>
-			<img src="./images/block_key.png" id = "block_key" alt = "block_key" class="block"/>
-			<img src="./images/item_key.png" id = "item_key" alt = "item_key" class="block"/>
-			<img src="./images/decoration_scaffold.png" id = "decoration_scaffold" alt = "decoration_scaffold" class="block"/>
-			<img src="./images/decoration_sconce.png" id = "decoration_sconce" alt = "decoration_sconce" class="block"/>
-			<img src="./images/toggleblocksolid.png" id = "toggleblocksolid" alt = "toggleblocksolid" class="block"/>
-			<img src="./images/toggleblockphase.png" id = "toggleblockphase" alt = "toggleblockphase" class="block"/>
-			<img src="./images/switch.png" id = "switch" alt = "switch" class="block"/>
-			<img src="./images/poweruprecall.png" id = "poweruprecall" alt = "poweruprecall" class="block"/>
-			<img src="./images/powerupburrow.png" id = "powerupburrow" alt = "powerupburrow" class="block"/>
-            <img src="./images/onewaywalldown.png" id = "onewaywalldown" alt = "onewaywalldown" class="block"/>
-		    <img src="./images/onewaywallleft.png" id = "onewaywallleft" alt = "onewaywallleft" class="block"/>
-            <img src="./images/onewaywallup.png" id = "onewaywallup" alt = "onewaywallup" style="" class="block"/>
-            <img src="./images/onewaywallright.png" id = "onewaywallright" alt = "onewaywallright" class="block"/>
-			<img src="./images/pipe_in.png" id = "pipe_in" alt = "pipe_in" class="block"/>
-			<img src="./images/pipe_out.png" id = "pipe_out" alt = "pipe_out" class="block"/>
-			<img src="./images/pipe_phase.png" id = "pipe_phase" alt = "pipe_phase" class="block"/>
-			<img src="./images/pipe_solid.png" id = "pipe_solid" alt = "pipe_solid" class="block"/>
-			<img src="./images/note.png" id="note" alt="note" class="block"/>
-            <img src="./images/main.png" id = "main" alt = "main" class="block"/>
-			<img src="./images/exit.png" id = "exit" alt = "exit" class="block"/>
-			<img src="./images/delete.png" id = "delete" alt = "delete" class="block"/>
+			<img src="./images/note.png" id="note" alt="note"/>
 		</div>
 		<paper-dialog id="noteDialog" modal>
 			<div>
@@ -150,23 +43,16 @@
         }
         constructor(){
             super();
-			window.addEventListener('keydown', this.keyPressHandler.bind(this));  // I hate "this"
         }
-		openNoteDialog(){
-			this.$['noteDialog'].open();
-		}
-		closeNoteDialog(){
-			this.$['noteDialog'].close();
-		}
-		getNoteDialogContents(){
-			return this.$['note-content'].value;
-		}
 		clearNoteDialog(){
 			this.$['note-content'].value = '';
 		}
+        closeNoteDialog() {
+            this.$['noteDialog'].close();
+        }
 		okNoteDialog(){
-			let id = "Note: " + this.getNoteDialogContents();
-			this.closeNoteDialog();
+			let id = "Note: " + this.$['note-content'].value;
+            this.closeNoteDialog();
 			level.setActive(id);
 		}
         clickblock(event){
@@ -174,11 +60,10 @@
             if(id === 'container') return;
             
             let currentActive = level.getActive();
-            if (currentActive === 'null') currentActive = 'delete'; 
             
 			if(id === currentActive) id = null;
 			if(currentActive && currentActive.startsWith('Note:') && id === 'note') id = null;
-			if(id !== null && id === "note") this.openNoteDialog();
+			if(id !== null && id === "note") this.$['noteDialog'].open();
 			event.target.style.outline = "5px dotted powderblue";
             event.target.style.zIndex = "1";
 			if(currentActive){
@@ -189,47 +74,13 @@
             
             if(id === 'note'){
                 level.setActive('Note:');
-            } else if (id === 'delete') {
-                level.setActive('null');
-            } else {
-                level.setActive(id);
             }
 		}
 
 		dragstartblock(event){
 			event.target.click();
 			event.preventDefault(); // In Soviet Russia you dont drag block. BLOCK DRAG YOU
-		}
-		
-		keyPressHandler(event){
-            let currentActive = level.getActive();
-            
-			if(!currentActive || !currentActive.startsWith('onewaywall')) return;
-            
-			switch(event.keyCode){
-				case 87:
-				case 38:
-					if(currentActive == 'onewaywallup') break;
-					this.$['onewaywallup'].click(); // Fite me
-					break;
-				case 65:
-				case 37:
-					if(currentActive == 'onewaywallleft') break;
-					this.$['onewaywallleft'].click();
-					break;
-				case 83:
-				case 40:
-					if(currentActive == 'onewaywalldown') break;
-					this.$['onewaywalldown'].click();
-					break;
-				case 68:
-				case 39:
-					if(currentActive == 'onewaywallright') break;
-					this.$['onewaywallright'].click();
-					break;
-			}
-		}
-    
+		}    
     }
     customElements.define(ToolBar.is, ToolBar);
 				

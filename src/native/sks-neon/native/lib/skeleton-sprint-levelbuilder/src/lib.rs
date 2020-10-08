@@ -2,6 +2,8 @@ mod renderer;
 mod ui;
 
 use crate::renderer::Renderer;
+use iced_core::keyboard::KeyCode;
+use iced_core::keyboard::ModifiersState;
 use image::GenericImageView;
 use sks::block::BackgroundType as SksBackgroundType;
 use sks::block::Direction as SksDirection;
@@ -10,6 +12,7 @@ use std::convert::TryInto;
 
 const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/bolonewt/bolonewt.ttf");
 const M0_DATA: &[u8] = include_bytes!("../assets/images/M0.png");
+const TRASH_BIN_DATA: &[u8] = include_bytes!("../assets/images/trash-bin.png");
 
 const WINDOW_WIDTH: u32 = 1920;
 const WINDOW_HEIGHT: u32 = 1080;
@@ -255,6 +258,7 @@ pub struct App {
     iced_debug: iced_native::Debug,
     iced_viewport: iced_wgpu::Viewport,
     iced_cursor_position: iced_core::Point,
+    iced_modifiers: ModifiersState,
 }
 
 impl App {
@@ -297,6 +301,7 @@ impl App {
         ));
 
         let iced_background_image = iced_native::image::Handle::from_memory(M0_DATA.into());
+        let iced_trash_bin_image = iced_native::image::Handle::from_memory(TRASH_BIN_DATA.into());
 
         for block in BLOCKS.iter().cloned() {
             iced_block_map.generate(&mut sks_image_renderer, block);
@@ -305,7 +310,8 @@ impl App {
         let mut iced_debug = iced_native::Debug::new();
         let iced_viewport_size = iced_core::Size::new(WINDOW_WIDTH, WINDOW_HEIGHT);
         let iced_viewport = iced_wgpu::Viewport::with_physical_size(iced_viewport_size, 1.0);
-        let iced_app = crate::ui::UiApp::new(iced_block_map, iced_background_image);
+        let iced_app =
+            crate::ui::UiApp::new(iced_block_map, iced_background_image, iced_trash_bin_image);
         let iced_cursor_position = iced_core::Point::new(0.0, 0.0);
         let iced_state = iced_native::program::State::new(
             iced_app,
@@ -324,6 +330,12 @@ impl App {
             iced_debug,
             iced_viewport,
             iced_cursor_position,
+            iced_modifiers: ModifiersState {
+                shift: false,
+                control: false,
+                alt: false,
+                logo: false,
+            },
         })
     }
 
@@ -370,11 +382,6 @@ impl App {
 
     pub fn get_level_data(&self) -> &[sks::Block] {
         self.get_level().get_level_data()
-    }
-
-    pub fn add_block(&mut self, i: usize, block: sks::Block) {
-        self.iced_state
-            .queue_message(crate::ui::Message::AddBlock { index: i, block });
     }
 
     pub fn get_level_image(&mut self) -> Result<image::DynamicImage, sks::render::RenderError> {
@@ -447,5 +454,40 @@ impl App {
             iced_native::mouse::Button::Right,
         ));
         self.iced_state.queue_event(event);
+    }
+
+    pub fn emit_keyboard_key_down(&mut self, key_code: u64) {
+        if let Some(key_code) = translate_key_code(key_code) {
+            let event = iced_native::Event::Keyboard(iced_native::keyboard::Event::KeyPressed {
+                key_code,
+                modifiers: self.iced_modifiers,
+            });
+            self.iced_state.queue_event(event);
+        }
+    }
+
+    pub fn emit_keyboard_key_up(&mut self, key_code: u64) {
+        if let Some(key_code) = translate_key_code(key_code) {
+            let event = iced_native::Event::Keyboard(iced_native::keyboard::Event::KeyReleased {
+                key_code,
+                modifiers: self.iced_modifiers,
+            });
+            self.iced_state.queue_event(event);
+        }
+    }
+}
+
+fn translate_key_code(key_code: u64) -> Option<KeyCode> {
+    match key_code {
+        37 => Some(KeyCode::Left),
+        38 => Some(KeyCode::Up),
+        39 => Some(KeyCode::Right),
+        40 => Some(KeyCode::Down),
+        65 => Some(KeyCode::A),
+        68 => Some(KeyCode::D),
+        83 => Some(KeyCode::S),
+        87 => Some(KeyCode::W),
+        90 => Some(KeyCode::Z),
+        _ => None,
     }
 }

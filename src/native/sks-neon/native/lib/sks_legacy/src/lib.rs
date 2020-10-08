@@ -52,10 +52,6 @@ impl LevelBuilder {
         self.skeleton_sprint_levelbuilder.is_dark()
     }
 
-    pub fn add_block(&mut self, i: usize, block: Block) {        
-        self.skeleton_sprint_levelbuilder.add_block(i, block);
-    }
-
     pub fn get_level_data(&self) -> &[Block] {
         self.skeleton_sprint_levelbuilder.get_level_data()
     }

@@ -50,6 +50,12 @@ module.exports.LevelBuilder = class LevelBuilder {
         // Attach globally to capture events outside of canvas
         document.addEventListener("mousedown", mouseHandler);
         document.addEventListener("mouseup", mouseHandler);
+
+        window.addEventListener('keydown', (event) => {
+            this.internal.emitKeyboardEvent('down', event.keyCode);
+            // Same note as above
+            this.dirty = true;
+        });
     }
 
     extractCanvasCoords(event) {
@@ -112,11 +118,6 @@ module.exports.LevelBuilder = class LevelBuilder {
         let img = this.internal.getFrame();
         this.boardCtx.drawImage(img, 0, 0, 1920, 1080);
         this.dirty = false;
-    }
-
-    addBlock(i, block) {
-        this.internal.addBlock(i, block);
-        this.dirty = true;
     }
 
     export(type) {
