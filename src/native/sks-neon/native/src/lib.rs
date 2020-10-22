@@ -96,10 +96,24 @@ declare_types! {
             get_image(&mut cx)
         }
 
+        method emitRecievedChar(mut cx) {
+            let key = cx.argument::<JsString>(0)?.value().chars().next().unwrap();
+
+            let mut this = cx.this();
+            {
+                let guard = cx.lock();
+                let mut lvlbuilder = this.borrow_mut(&guard);
+
+                lvlbuilder.skeleton_sprint_levelbuilder.emit_recieved_char(key);
+            }
+
+            Ok(cx.undefined().upcast())
+        }
+
         method emitKeyboardEvent(mut cx) {
             let kind = cx.argument::<JsString>(0)?.value();
             let key = cx.argument::<JsNumber>(1)?.value();
-            
+
             // TODO: Modifiers?
 
             let mut this = cx.this();

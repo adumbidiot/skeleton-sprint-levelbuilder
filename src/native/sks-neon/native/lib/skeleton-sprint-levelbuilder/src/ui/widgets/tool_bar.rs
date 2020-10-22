@@ -20,6 +20,7 @@ use iced_native::Hasher;
 use iced_native::Layout;
 use iced_native::Widget;
 use sks::block::Direction as SksDirection;
+use std::hash::Hash;
 
 // TODO: Maybe this could be user configurable some day?
 const TOOLBAR_BLOCKS: &[sks::Block] = &[
@@ -60,10 +61,16 @@ const TOOLBAR_BLOCKS: &[sks::Block] = &[
     sks::Block::SecretExit,
 ];
 
-fn is_directional(block: &sks::Block) -> bool {
-    matches!(block, sks::Block::OneWayWall { .. })
+fn strip_block(block: &sks::Block) -> sks::Block {
+    match block {
+        sks::Block::Note { .. } => sks::Block::Note {
+            text: String::new(),
+        },
+        block => block.clone(),
+    }
 }
 
+#[derive(Debug, Hash)]
 pub struct State {
     selected: Option<usize>,
 }
@@ -71,6 +78,19 @@ pub struct State {
 impl State {
     pub fn new() -> State {
         State { selected: None }
+    }
+
+    pub fn select_block(&mut self, block: Option<&sks::Block>) {
+        match block.map(strip_block) {
+            Some(block) => {
+                if let Some(index) = TOOLBAR_BLOCKS.iter().position(|el| el == &block) {
+                    self.selected = Some(index);
+                }
+            }
+            None => {
+                self.selected = None;
+            }
+        }
     }
 }
 
@@ -125,7 +145,7 @@ where
         _clipboard: Option<&dyn Clipboard>,
     ) {
         match event {
-            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let layout_bounds = layout.bounds();
                 let block_size = crate::WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
 
@@ -138,6 +158,9 @@ where
                         if Some(click_index) == self.state.selected {
                             self.state.selected = None;
                             messages.push(crate::ui::Message::ChangeActiveBlock { block: None });
+                        } else if block_ref.is_note() {
+                            // self.state.selected = Some(click_index);
+                            messages.push(crate::ui::Message::OpenNoteModal);
                         } else {
                             self.state.selected = Some(click_index);
                             messages.push(crate::ui::Message::ChangeActiveBlock {
@@ -152,7 +175,7 @@ where
                     .state
                     .selected
                     .and_then(|index| TOOLBAR_BLOCKS.get(index))
-                    .map_or(false, is_directional)
+                    .map_or(false, sks::Block::is_directional)
                 {
                     let maybe_new_selected = match key_code {
                         KeyCode::Up | KeyCode::W => Some(sks::Block::OneWayWall {
@@ -188,7 +211,7 @@ where
     }
 
     fn hash_layout(&self, state: &mut Hasher) {
-        // 0u32.hash(state);
+        self.state.hash(state);
         // self.level.hash(state);
         // self.grid.hash(state);
         // self.iced_block_map.hash(state);

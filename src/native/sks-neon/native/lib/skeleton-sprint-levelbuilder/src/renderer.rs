@@ -196,6 +196,20 @@ impl Renderer {
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
+        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                attachment: &self
+                    .wgpu_output_texture
+                    .create_view(&wgpu::TextureViewDescriptor::default()),
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: None,
+        });
+
         {
             let viewport_size =
                 iced_core::Size::new(crate::WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32);

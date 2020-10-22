@@ -475,19 +475,31 @@ impl App {
             self.iced_state.queue_event(event);
         }
     }
+
+    pub fn emit_recieved_char(&mut self, c: char) {
+        let event =
+            iced_native::Event::Keyboard(iced_native::keyboard::Event::CharacterReceived(c));
+        self.iced_state.queue_event(event);
+    }
 }
 
 fn translate_key_code(key_code: u64) -> Option<KeyCode> {
     match key_code {
+        8 => Some(KeyCode::Backspace),
+        13 => Some(KeyCode::Enter),
         37 => Some(KeyCode::Left),
         38 => Some(KeyCode::Up),
         39 => Some(KeyCode::Right),
         40 => Some(KeyCode::Down),
+        46 => Some(KeyCode::Delete),
         65 => Some(KeyCode::A),
         68 => Some(KeyCode::D),
         83 => Some(KeyCode::S),
         87 => Some(KeyCode::W),
         90 => Some(KeyCode::Z),
-        _ => None,
+        code => {
+            eprintln!("Unknown key code: {}", code);
+            None
+        }
     }
 }

@@ -23,21 +23,31 @@ var SksComponents = (function (exports) {
     function safe_not_equal(a, b) {
         return a != a ? b == b : a !== b || ((a && typeof a === 'object') || typeof a === 'function');
     }
-    function create_slot(definition, ctx, fn) {
+    function create_slot(definition, ctx, $$scope, fn) {
         if (definition) {
-            const slot_ctx = get_slot_context(definition, ctx, fn);
+            const slot_ctx = get_slot_context(definition, ctx, $$scope, fn);
             return definition[0](slot_ctx);
         }
     }
-    function get_slot_context(definition, ctx, fn) {
-        return definition[1]
-            ? assign({}, assign(ctx.$$scope.ctx, definition[1](fn ? fn(ctx) : {})))
-            : ctx.$$scope.ctx;
+    function get_slot_context(definition, ctx, $$scope, fn) {
+        return definition[1] && fn
+            ? assign($$scope.ctx.slice(), definition[1](fn(ctx)))
+            : $$scope.ctx;
     }
-    function get_slot_changes(definition, ctx, changed, fn) {
-        return definition[1]
-            ? assign({}, assign(ctx.$$scope.changed || {}, definition[1](fn ? fn(changed) : {})))
-            : ctx.$$scope.changed || {};
+    function get_slot_changes(definition, $$scope, dirty, fn) {
+        if (definition[2] && fn) {
+            const lets = definition[2](fn(dirty));
+            if (typeof $$scope.dirty === 'object') {
+                const merged = [];
+                const len = Math.max($$scope.dirty.length, lets.length);
+                for (let i = 0; i < len; i += 1) {
+                    merged[i] = $$scope.dirty[i] | lets[i];
+                }
+                return merged;
+            }
+            return $$scope.dirty | lets;
+        }
+        return $$scope.dirty;
     }
 
     function append(target, node) {
@@ -65,7 +75,7 @@ var SksComponents = (function (exports) {
     function attr(node, attribute, value) {
         if (value == null)
             node.removeAttribute(attribute);
-        else
+        else if (node.getAttribute(attribute) !== value)
             node.setAttribute(attribute, value);
     }
     function children(element) {
@@ -143,11 +153,12 @@ var SksComponents = (function (exports) {
         update_scheduled = false;
     }
     function update($$) {
-        if ($$.fragment) {
-            $$.update($$.dirty);
+        if ($$.fragment !== null) {
+            $$.update();
             run_all($$.before_update);
-            $$.fragment.p($$.dirty, $$.ctx);
-            $$.dirty = null;
+            const dirty = $$.dirty;
+            $$.dirty = [-1];
+            $$.fragment && $$.fragment.p($$.ctx, dirty);
             $$.after_update.forEach(add_render_callback);
         }
     }
@@ -177,14 +188,18 @@ var SksComponents = (function (exports) {
     }
 
     function bind(component, name, callback) {
-        if (component.$$.props.indexOf(name) === -1)
-            return;
-        component.$$.bound[name] = callback;
-        callback(component.$$.ctx[name]);
+        const index = component.$$.props[name];
+        if (index !== undefined) {
+            component.$$.bound[index] = callback;
+            callback(component.$$.ctx[index]);
+        }
+    }
+    function create_component(block) {
+        block && block.c();
     }
     function mount_component(component, target, anchor) {
         const { fragment, on_mount, on_destroy, after_update } = component.$$;
-        fragment.m(target, anchor);
+        fragment && fragment.m(target, anchor);
         // onMount happens before the initial afterUpdate
         add_render_callback(() => {
             const new_on_destroy = on_mount.map(run).filter(is_function);
@@ -201,32 +216,33 @@ var SksComponents = (function (exports) {
         after_update.forEach(add_render_callback);
     }
     function destroy_component(component, detaching) {
-        if (component.$$.fragment) {
-            run_all(component.$$.on_destroy);
-            component.$$.fragment.d(detaching);
+        const $$ = component.$$;
+        if ($$.fragment !== null) {
+            run_all($$.on_destroy);
+            $$.fragment && $$.fragment.d(detaching);
             // TODO null out other refs, including component.$$ (but need to
             // preserve final state?)
-            component.$$.on_destroy = component.$$.fragment = null;
-            component.$$.ctx = {};
+            $$.on_destroy = $$.fragment = null;
+            $$.ctx = [];
         }
     }
-    function make_dirty(component, key) {
-        if (!component.$$.dirty) {
+    function make_dirty(component, i) {
+        if (component.$$.dirty[0] === -1) {
             dirty_components.push(component);
             schedule_update();
-            component.$$.dirty = blank_object();
+            component.$$.dirty.fill(0);
         }
-        component.$$.dirty[key] = true;
+        component.$$.dirty[(i / 31) | 0] |= (1 << (i % 31));
     }
-    function init(component, options, instance, create_fragment, not_equal, prop_names) {
+    function init(component, options, instance, create_fragment, not_equal, props, dirty = [-1]) {
         const parent_component = current_component;
         set_current_component(component);
-        const props = options.props || {};
+        const prop_values = options.props || {};
         const $$ = component.$$ = {
             fragment: null,
             ctx: null,
             // state
-            props: prop_names,
+            props,
             update: noop,
             not_equal,
             bound: blank_object(),
@@ -238,31 +254,34 @@ var SksComponents = (function (exports) {
             context: new Map(parent_component ? parent_component.$$.context : []),
             // everything else
             callbacks: blank_object(),
-            dirty: null
+            dirty
         };
         let ready = false;
         $$.ctx = instance
-            ? instance(component, props, (key, value) => {
-                if ($$.ctx && not_equal($$.ctx[key], $$.ctx[key] = value)) {
-                    if ($$.bound[key])
-                        $$.bound[key](value);
+            ? instance(component, prop_values, (i, ret, ...rest) => {
+                const value = rest.length ? rest[0] : ret;
+                if ($$.ctx && not_equal($$.ctx[i], $$.ctx[i] = value)) {
+                    if ($$.bound[i])
+                        $$.bound[i](value);
                     if (ready)
-                        make_dirty(component, key);
+                        make_dirty(component, i);
                 }
+                return ret;
             })
-            : props;
+            : [];
         $$.update();
         ready = true;
         run_all($$.before_update);
-        $$.fragment = create_fragment($$.ctx);
+        // `false` as a special case of no DOM component
+        $$.fragment = create_fragment ? create_fragment($$.ctx) : false;
         if (options.target) {
             if (options.hydrate) {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                $$.fragment.l(children(options.target));
+                $$.fragment && $$.fragment.l(children(options.target));
             }
             else {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                $$.fragment.c();
+                $$.fragment && $$.fragment.c();
             }
             if (options.intro)
                 transition_in(component.$$.fragment);
@@ -290,66 +309,52 @@ var SksComponents = (function (exports) {
         }
     }
 
-    /* svelte\src\Button.html generated by Svelte v3.9.2 */
+    /* svelte\src\Button.html generated by Svelte v3.17.3 */
 
     function add_css() {
     	var style = element("style");
-    	style.id = 'svelte-qjc2uf-style';
+    	style.id = "svelte-qjc2uf-style";
     	style.textContent = "button.svelte-qjc2uf{background-color:#ff0000;color:black;text-align:center;text-decoration:none;display:inline-block;vertical-align:middle;padding:.4rem .8rem;font-size:inherit;border:1px solid transparent;border-radius:.25rem;user-select:none;outline:none;transition:all 0.15s ease-in-out;line-height:inherit;cursor:pointer\r\n\t}button.svelte-qjc2uf:active{background-color:#ad0000}";
     	append(document.head, style);
     }
 
     // (2:1) {#if content}
     function create_if_block(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
-    			t = text(ctx.content);
+    			t = text(/*content*/ ctx[0]);
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
-    		p(changed, ctx) {
-    			if (changed.content) {
-    				set_data(t, ctx.content);
-    			}
+    		p(ctx, dirty) {
+    			if (dirty & /*content*/ 1) set_data(t, /*content*/ ctx[0]);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     function create_fragment(ctx) {
-    	var button, t, current, dispose;
-
-    	var if_block = (ctx.content) && create_if_block(ctx);
-
-    	const default_slot_template = ctx.$$slots.default;
-    	const default_slot = create_slot(default_slot_template, ctx, null);
+    	let button;
+    	let t;
+    	let current;
+    	let dispose;
+    	let if_block = /*content*/ ctx[0] && create_if_block(ctx);
+    	const default_slot_template = /*$$slots*/ ctx[2].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
 
     	return {
     		c() {
     			button = element("button");
     			if (if_block) if_block.c();
     			t = space();
-
     			if (default_slot) default_slot.c();
-
     			attr(button, "class", "svelte-qjc2uf");
-    			dispose = listen(button, "click", ctx.click_handler);
     		},
-
-    		l(nodes) {
-    			if (default_slot) default_slot.l(button_nodes);
-    		},
-
     		m(target, anchor) {
     			insert(target, button, anchor);
     			if (if_block) if_block.m(button, null);
@@ -360,12 +365,12 @@ var SksComponents = (function (exports) {
     			}
 
     			current = true;
+    			dispose = listen(button, "click", /*click_handler*/ ctx[3]);
     		},
-
-    		p(changed, ctx) {
-    			if (ctx.content) {
+    		p(ctx, [dirty]) {
+    			if (/*content*/ ctx[0]) {
     				if (if_block) {
-    					if_block.p(changed, ctx);
+    					if_block.p(ctx, dirty);
     				} else {
     					if_block = create_if_block(ctx);
     					if_block.c();
@@ -376,32 +381,22 @@ var SksComponents = (function (exports) {
     				if_block = null;
     			}
 
-    			if (default_slot && default_slot.p && changed.$$scope) {
-    				default_slot.p(
-    					get_slot_changes(default_slot_template, ctx, changed, null),
-    					get_slot_context(default_slot_template, ctx, null)
-    				);
+    			if (default_slot && default_slot.p && dirty & /*$$scope*/ 2) {
+    				default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[1], null), get_slot_changes(default_slot_template, /*$$scope*/ ctx[1], dirty, null));
     			}
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(default_slot, local);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(default_slot, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(button);
-    			}
-
+    			if (detaching) detach(button);
     			if (if_block) if_block.d();
-
     			if (default_slot) default_slot.d(detaching);
     			dispose();
     		}
@@ -410,7 +405,6 @@ var SksComponents = (function (exports) {
 
     function instance($$self, $$props, $$invalidate) {
     	let { content = null } = $$props;
-
     	let { $$slots = {}, $$scope } = $$props;
 
     	function click_handler(event) {
@@ -418,57 +412,47 @@ var SksComponents = (function (exports) {
     	}
 
     	$$self.$set = $$props => {
-    		if ('content' in $$props) $$invalidate('content', content = $$props.content);
-    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
+    		if ("content" in $$props) $$invalidate(0, content = $$props.content);
+    		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
     	};
 
-    	return { content, click_handler, $$slots, $$scope };
+    	return [content, $$scope, $$slots, click_handler];
     }
 
     class Button extends SvelteComponent {
     	constructor(options) {
     		super();
     		if (!document.getElementById("svelte-qjc2uf-style")) add_css();
-    		init(this, options, instance, create_fragment, safe_not_equal, ["content"]);
+    		init(this, options, instance, create_fragment, safe_not_equal, { content: 0 });
     	}
     }
 
-    /* svelte\src\Modal.html generated by Svelte v3.9.2 */
+    /* svelte\src\Modal.html generated by Svelte v3.17.3 */
 
     function add_css$1() {
     	var style = element("style");
-    	style.id = 'svelte-10rljv3-style';
+    	style.id = "svelte-10rljv3-style";
     	style.textContent = ".container.svelte-10rljv3{position:fixed;width:50%;height:50%;left:25%;top:25%;background-color:#777777;z-index:999;text-align:center;border-radius:.25rem}.modal.svelte-10rljv3{position:fixed;z-index:999;left:0px;top:0px;width:100%;height:100%;background-color:rgba(0,0,0,0.4);transition:all 0.3s ease-in-out;visibility:hidden;opacity:0}.modal-active.svelte-10rljv3{visibility:visible;opacity:1}";
     	append(document.head, style);
     }
 
     function create_fragment$1(ctx) {
-    	var div1, div0, current, dispose;
-
-    	const default_slot_template = ctx.$$slots.default;
-    	const default_slot = create_slot(default_slot_template, ctx, null);
+    	let div1;
+    	let div0;
+    	let current;
+    	let dispose;
+    	const default_slot_template = /*$$slots*/ ctx[3].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[2], null);
 
     	return {
     		c() {
     			div1 = element("div");
     			div0 = element("div");
-
     			if (default_slot) default_slot.c();
-
     			attr(div0, "class", "container svelte-10rljv3");
     			attr(div1, "class", "modal svelte-10rljv3");
-    			toggle_class(div1, "modal-active", ctx.active);
-
-    			dispose = [
-    				listen(div0, "click", containerClickHandler),
-    				listen(div1, "click", ctx.clickHandler)
-    			];
+    			toggle_class(div1, "modal-active", /*active*/ ctx[0]);
     		},
-
-    		l(nodes) {
-    			if (default_slot) default_slot.l(div0_nodes);
-    		},
-
     		m(target, anchor) {
     			insert(target, div1, anchor);
     			append(div1, div0);
@@ -478,200 +462,193 @@ var SksComponents = (function (exports) {
     			}
 
     			current = true;
-    		},
 
-    		p(changed, ctx) {
-    			if (default_slot && default_slot.p && changed.$$scope) {
-    				default_slot.p(
-    					get_slot_changes(default_slot_template, ctx, changed, null),
-    					get_slot_context(default_slot_template, ctx, null)
-    				);
+    			dispose = [
+    				listen(div0, "click", cancelHandler),
+    				listen(div0, "mousedown", cancelHandler),
+    				listen(div1, "click", /*clickHandler*/ ctx[1])
+    			];
+    		},
+    		p(ctx, [dirty]) {
+    			if (default_slot && default_slot.p && dirty & /*$$scope*/ 4) {
+    				default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[2], null), get_slot_changes(default_slot_template, /*$$scope*/ ctx[2], dirty, null));
     			}
 
-    			if (changed.active) {
-    				toggle_class(div1, "modal-active", ctx.active);
+    			if (dirty & /*active*/ 1) {
+    				toggle_class(div1, "modal-active", /*active*/ ctx[0]);
     			}
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(default_slot, local);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(default_slot, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(div1);
-    			}
-
+    			if (detaching) detach(div1);
     			if (default_slot) default_slot.d(detaching);
     			run_all(dispose);
     		}
     	};
     }
 
-    function containerClickHandler(e){
+    function cancelHandler(e) {
     	e.cancelBubble = true;
     }
 
     function instance$1($$self, $$props, $$invalidate) {
     	let { active } = $$props;
-    	
+
     	function clickHandler(e) {
-    		$$invalidate('active', active = !active);
+    		$$invalidate(0, active = !active);
     	}
 
     	let { $$slots = {}, $$scope } = $$props;
 
     	$$self.$set = $$props => {
-    		if ('active' in $$props) $$invalidate('active', active = $$props.active);
-    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
+    		if ("active" in $$props) $$invalidate(0, active = $$props.active);
+    		if ("$$scope" in $$props) $$invalidate(2, $$scope = $$props.$$scope);
     	};
 
-    	return { active, clickHandler, $$slots, $$scope };
+    	return [active, clickHandler, $$scope, $$slots];
     }
 
     class Modal extends SvelteComponent {
     	constructor(options) {
     		super();
     		if (!document.getElementById("svelte-10rljv3-style")) add_css$1();
-    		init(this, options, instance$1, create_fragment$1, safe_not_equal, ["active"]);
+    		init(this, options, instance$1, create_fragment$1, safe_not_equal, { active: 0 });
     	}
     }
 
-    /* svelte\src\ImportModal.html generated by Svelte v3.9.2 */
+    /* svelte\src\ImportModal.html generated by Svelte v3.17.3 */
 
     function add_css$2() {
     	var style = element("style");
-    	style.id = 'svelte-1mamwwo-style';
+    	style.id = "svelte-1mamwwo-style";
     	style.textContent = ".entry.svelte-1mamwwo{margin:0.25rem 0rem}.title-wrapper.svelte-1mamwwo{text-align:center;background-color:red;margin:0rem 2rem;border-radius:0.25rem;user-select:none}.title.svelte-1mamwwo{text-align:center;text-decoration:none;font-weight:100}.close.svelte-1mamwwo{right:0.5rem;height:1.5rem;font-size:1rem;position:absolute;bottom:1rem}";
     	append(document.head, style);
     }
 
     // (6:2) <Button on:click={loadLBL}>
     function create_default_slot_4(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("LBL File");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (9:2) <Button on:click={loadAny}>
     function create_default_slot_3(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("Any File (Guess format)");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (12:2) <Button on:click={loadAS3}>
     function create_default_slot_2(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("AS3 Array File (Dev)");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (15:2) <Button on:click="{deactivate}">
     function create_default_slot_1(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("Close");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (1:0) <Modal bind:active={active}>
     function create_default_slot(ctx) {
-    	var div0, t1, div1, t2, div2, t3, div3, t4, div4, current;
+    	let div0;
+    	let t1;
+    	let div1;
+    	let t2;
+    	let div2;
+    	let t3;
+    	let div3;
+    	let t4;
+    	let div4;
+    	let current;
 
-    	var button0 = new Button({
-    		props: {
-    		$$slots: { default: [create_default_slot_4] },
-    		$$scope: { ctx }
-    	}
-    	});
-    	button0.$on("click", ctx.loadLBL);
+    	const button0 = new Button({
+    			props: {
+    				$$slots: { default: [create_default_slot_4] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var button1 = new Button({
-    		props: {
-    		$$slots: { default: [create_default_slot_3] },
-    		$$scope: { ctx }
-    	}
-    	});
-    	button1.$on("click", ctx.loadAny);
+    	button0.$on("click", /*loadLBL*/ ctx[3]);
 
-    	var button2 = new Button({
-    		props: {
-    		$$slots: { default: [create_default_slot_2] },
-    		$$scope: { ctx }
-    	}
-    	});
-    	button2.$on("click", ctx.loadAS3);
+    	const button1 = new Button({
+    			props: {
+    				$$slots: { default: [create_default_slot_3] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var button3 = new Button({
-    		props: {
-    		$$slots: { default: [create_default_slot_1] },
-    		$$scope: { ctx }
-    	}
-    	});
-    	button3.$on("click", ctx.deactivate);
+    	button1.$on("click", /*loadAny*/ ctx[4]);
+
+    	const button2 = new Button({
+    			props: {
+    				$$slots: { default: [create_default_slot_2] },
+    				$$scope: { ctx }
+    			}
+    		});
+
+    	button2.$on("click", /*loadAS3*/ ctx[2]);
+
+    	const button3 = new Button({
+    			props: {
+    				$$slots: { default: [create_default_slot_1] },
+    				$$scope: { ctx }
+    			}
+    		});
+
+    	button3.$on("click", /*deactivate*/ ctx[1]);
 
     	return {
     		c() {
@@ -679,22 +656,21 @@ var SksComponents = (function (exports) {
     			div0.innerHTML = `<h1 class="title svelte-1mamwwo">Import</h1>`;
     			t1 = space();
     			div1 = element("div");
-    			button0.$$.fragment.c();
+    			create_component(button0.$$.fragment);
     			t2 = space();
     			div2 = element("div");
-    			button1.$$.fragment.c();
+    			create_component(button1.$$.fragment);
     			t3 = space();
     			div3 = element("div");
-    			button2.$$.fragment.c();
+    			create_component(button2.$$.fragment);
     			t4 = space();
     			div4 = element("div");
-    			button3.$$.fragment.c();
+    			create_component(button3.$$.fragment);
     			attr(div0, "class", "title-wrapper svelte-1mamwwo");
     			attr(div1, "class", "entry svelte-1mamwwo");
     			attr(div3, "class", "entry svelte-1mamwwo");
     			attr(div4, "class", "close svelte-1mamwwo");
     		},
-
     		m(target, anchor) {
     			insert(target, div0, anchor);
     			insert(target, t1, anchor);
@@ -711,38 +687,44 @@ var SksComponents = (function (exports) {
     			mount_component(button3, div4, null);
     			current = true;
     		},
+    		p(ctx, dirty) {
+    			const button0_changes = {};
 
-    		p(changed, ctx) {
-    			var button0_changes = {};
-    			if (changed.$$scope) button0_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 128) {
+    				button0_changes.$$scope = { dirty, ctx };
+    			}
+
     			button0.$set(button0_changes);
+    			const button1_changes = {};
 
-    			var button1_changes = {};
-    			if (changed.$$scope) button1_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 128) {
+    				button1_changes.$$scope = { dirty, ctx };
+    			}
+
     			button1.$set(button1_changes);
+    			const button2_changes = {};
 
-    			var button2_changes = {};
-    			if (changed.$$scope) button2_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 128) {
+    				button2_changes.$$scope = { dirty, ctx };
+    			}
+
     			button2.$set(button2_changes);
+    			const button3_changes = {};
 
-    			var button3_changes = {};
-    			if (changed.$$scope) button3_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 128) {
+    				button3_changes.$$scope = { dirty, ctx };
+    			}
+
     			button3.$set(button3_changes);
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(button0.$$.fragment, local);
-
     			transition_in(button1.$$.fragment, local);
-
     			transition_in(button2.$$.fragment, local);
-
     			transition_in(button3.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(button0.$$.fragment, local);
     			transition_out(button1.$$.fragment, local);
@@ -750,201 +732,365 @@ var SksComponents = (function (exports) {
     			transition_out(button3.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(div0);
-    				detach(t1);
-    				detach(div1);
-    			}
-
+    			if (detaching) detach(div0);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(div1);
     			destroy_component(button0);
-
-    			if (detaching) {
-    				detach(t2);
-    				detach(div2);
-    			}
-
+    			if (detaching) detach(t2);
+    			if (detaching) detach(div2);
     			destroy_component(button1);
-
-    			if (detaching) {
-    				detach(t3);
-    				detach(div3);
-    			}
-
+    			if (detaching) detach(t3);
+    			if (detaching) detach(div3);
     			destroy_component(button2);
-
-    			if (detaching) {
-    				detach(t4);
-    				detach(div4);
-    			}
-
+    			if (detaching) detach(t4);
+    			if (detaching) detach(div4);
     			destroy_component(button3);
     		}
     	};
     }
 
     function create_fragment$2(ctx) {
-    	var updating_active, current;
+    	let updating_active;
+    	let current;
 
     	function modal_active_binding(value) {
-    		ctx.modal_active_binding.call(null, value);
-    		updating_active = true;
-    		add_flush_callback(() => updating_active = false);
+    		/*modal_active_binding*/ ctx[6].call(null, value);
     	}
 
     	let modal_props = {
     		$$slots: { default: [create_default_slot] },
     		$$scope: { ctx }
     	};
-    	if (ctx.active !== void 0) {
-    		modal_props.active = ctx.active;
-    	}
-    	var modal = new Modal({ props: modal_props });
 
-    	binding_callbacks.push(() => bind(modal, 'active', modal_active_binding));
+    	if (/*active*/ ctx[0] !== void 0) {
+    		modal_props.active = /*active*/ ctx[0];
+    	}
+
+    	const modal = new Modal({ props: modal_props });
+    	binding_callbacks.push(() => bind(modal, "active", modal_active_binding));
 
     	return {
     		c() {
-    			modal.$$.fragment.c();
+    			create_component(modal.$$.fragment);
     		},
-
     		m(target, anchor) {
     			mount_component(modal, target, anchor);
     			current = true;
     		},
+    		p(ctx, [dirty]) {
+    			const modal_changes = {};
 
-    		p(changed, ctx) {
-    			var modal_changes = {};
-    			if (changed.$$scope) modal_changes.$$scope = { changed, ctx };
-    			if (!updating_active && changed.active) {
-    				modal_changes.active = ctx.active;
+    			if (dirty & /*$$scope*/ 128) {
+    				modal_changes.$$scope = { dirty, ctx };
     			}
+
+    			if (!updating_active && dirty & /*active*/ 1) {
+    				updating_active = true;
+    				modal_changes.active = /*active*/ ctx[0];
+    				add_flush_callback(() => updating_active = false);
+    			}
+
     			modal.$set(modal_changes);
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(modal.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(modal.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
     			destroy_component(modal, detaching);
     		}
     	};
     }
 
-    async function getFilename(){
+    async function getFilename() {
     	let filename = await window.dialog.showOpenDialog();
-    	if(!filename){
+
+    	if (!filename) {
     		throw "No Dialog Data";
     	}
-    	let data = await readFile(filename[0], 'utf8');
+
+    	let data = await readFile(filename[0], "utf8");
     	return data;
     }
 
-    function readFile(path, encoding){
+    function readFile(path, encoding) {
     	return new Promise((resolve, reject) => {
-    		window.fs.readFile(path, encoding, function(err, data){
-    			if(err) {
-    				reject(err);
-    			} else {
-    				resolve(data);
-    			}
+    			window.fs.readFile(path, encoding, function (err, data) {
+    				if (err) {
+    					reject(err);
+    				} else {
+    					resolve(data);
+    				}
+    			});
     		});
-    	});
     }
 
     function instance$2($$self, $$props, $$invalidate) {
-    	
-    	
     	let { active = false } = $$props;
-    	function activate(){
-    		$$invalidate('active', active = true);
+
+    	function activate() {
+    		$$invalidate(0, active = true);
     	}
-    	
-    	function deactivate(){
-    		$$invalidate('active', active = false);
+
+    	function deactivate() {
+    		$$invalidate(0, active = false);
     	}
-    	
-    	function loadAS3(){
-    		getFilename()
-    		.then((data) => {
+
+    	function loadAS3() {
+    		getFilename().then(data => {
     			window.level.importAS3(data);
     			deactivate();
-    		})
-    		.catch((e) => {
+    		}).catch(e => {
     			throw e;
     		});
     	}
-    	
-    	function loadLBL(){
-    		getFilename()
-    		.then((data) => {
+
+    	function loadLBL() {
+    		getFilename().then(data => {
     			window.level.importLBL(data);
     			deactivate();
-    		})
-    		.catch((e) => {
+    		}).catch(e => {
     			throw e;
     		});
     	}
-    	
-    	function loadAny(){
-    		getFilename()
-    		.then((data) => {
+
+    	function loadAny() {
+    		getFilename().then(data => {
     			window.level.import(data);
     			deactivate();
-    		})
-    		.catch((e) => {
+    		}).catch(e => {
     			throw e;
     		});
     	}
 
     	function modal_active_binding(value) {
     		active = value;
-    		$$invalidate('active', active);
+    		$$invalidate(0, active);
     	}
 
     	$$self.$set = $$props => {
-    		if ('active' in $$props) $$invalidate('active', active = $$props.active);
+    		if ("active" in $$props) $$invalidate(0, active = $$props.active);
     	};
 
-    	return {
-    		active,
-    		activate,
-    		deactivate,
-    		loadAS3,
-    		loadLBL,
-    		loadAny,
-    		modal_active_binding
-    	};
+    	return [active, deactivate, loadAS3, loadLBL, loadAny, activate, modal_active_binding];
     }
 
     class ImportModal extends SvelteComponent {
     	constructor(options) {
     		super();
     		if (!document.getElementById("svelte-1mamwwo-style")) add_css$2();
-    		init(this, options, instance$2, create_fragment$2, safe_not_equal, ["active", "activate", "deactivate"]);
+    		init(this, options, instance$2, create_fragment$2, safe_not_equal, { active: 0, activate: 5, deactivate: 1 });
     	}
 
     	get activate() {
-    		return this.$$.ctx.activate;
+    		return this.$$.ctx[5];
     	}
 
     	get deactivate() {
-    		return this.$$.ctx.deactivate;
+    		return this.$$.ctx[1];
+    	}
+    }
+
+    /* svelte\src\NoteModal.html generated by Svelte v3.17.3 */
+
+    function add_css$3() {
+    	var style = element("style");
+    	style.id = "svelte-1mamwwo-style";
+    	style.textContent = ".title-wrapper.svelte-1mamwwo{text-align:center;background-color:red;margin:0rem 2rem;border-radius:0.25rem;user-select:none}.title.svelte-1mamwwo{text-align:center;text-decoration:none;font-weight:100}.close.svelte-1mamwwo{right:0.5rem;height:1.5rem;font-size:1rem;position:absolute;bottom:1rem}";
+    	append(document.head, style);
+    }
+
+    // (6:2) <Button on:click="{deactivate}">
+    function create_default_slot_1$1(ctx) {
+    	let t;
+
+    	return {
+    		c() {
+    			t = text("Close");
+    		},
+    		m(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+    		d(detaching) {
+    			if (detaching) detach(t);
+    		}
+    	};
+    }
+
+    // (1:0) <Modal bind:active={active}>
+    function create_default_slot$1(ctx) {
+    	let div0;
+    	let t1;
+    	let div1;
+    	let current;
+
+    	const button = new Button({
+    			props: {
+    				$$slots: { default: [create_default_slot_1$1] },
+    				$$scope: { ctx }
+    			}
+    		});
+
+    	button.$on("click", /*deactivate*/ ctx[1]);
+
+    	return {
+    		c() {
+    			div0 = element("div");
+    			div0.innerHTML = `<h1 class="title svelte-1mamwwo">Note Content</h1>`;
+    			t1 = space();
+    			div1 = element("div");
+    			create_component(button.$$.fragment);
+    			attr(div0, "class", "title-wrapper svelte-1mamwwo");
+    			attr(div1, "class", "close svelte-1mamwwo");
+    		},
+    		m(target, anchor) {
+    			insert(target, div0, anchor);
+    			insert(target, t1, anchor);
+    			insert(target, div1, anchor);
+    			mount_component(button, div1, null);
+    			current = true;
+    		},
+    		p(ctx, dirty) {
+    			const button_changes = {};
+
+    			if (dirty & /*$$scope*/ 32) {
+    				button_changes.$$scope = { dirty, ctx };
+    			}
+
+    			button.$set(button_changes);
+    		},
+    		i(local) {
+    			if (current) return;
+    			transition_in(button.$$.fragment, local);
+    			current = true;
+    		},
+    		o(local) {
+    			transition_out(button.$$.fragment, local);
+    			current = false;
+    		},
+    		d(detaching) {
+    			if (detaching) detach(div0);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(div1);
+    			destroy_component(button);
+    		}
+    	};
+    }
+
+    function create_fragment$3(ctx) {
+    	let updating_active;
+    	let current;
+
+    	function modal_active_binding(value) {
+    		/*modal_active_binding*/ ctx[4].call(null, value);
+    	}
+
+    	let modal_props = {
+    		$$slots: { default: [create_default_slot$1] },
+    		$$scope: { ctx }
+    	};
+
+    	if (/*active*/ ctx[0] !== void 0) {
+    		modal_props.active = /*active*/ ctx[0];
+    	}
+
+    	const modal = new Modal({ props: modal_props });
+    	binding_callbacks.push(() => bind(modal, "active", modal_active_binding));
+
+    	return {
+    		c() {
+    			create_component(modal.$$.fragment);
+    		},
+    		m(target, anchor) {
+    			mount_component(modal, target, anchor);
+    			current = true;
+    		},
+    		p(ctx, [dirty]) {
+    			const modal_changes = {};
+
+    			if (dirty & /*$$scope*/ 32) {
+    				modal_changes.$$scope = { dirty, ctx };
+    			}
+
+    			if (!updating_active && dirty & /*active*/ 1) {
+    				updating_active = true;
+    				modal_changes.active = /*active*/ ctx[0];
+    				add_flush_callback(() => updating_active = false);
+    			}
+
+    			modal.$set(modal_changes);
+    		},
+    		i(local) {
+    			if (current) return;
+    			transition_in(modal.$$.fragment, local);
+    			current = true;
+    		},
+    		o(local) {
+    			transition_out(modal.$$.fragment, local);
+    			current = false;
+    		},
+    		d(detaching) {
+    			destroy_component(modal, detaching);
+    		}
+    	};
+    }
+
+    function instance$3($$self, $$props, $$invalidate) {
+    	let { active = false } = $$props;
+    	let { content = "" } = $$props;
+
+    	function activate() {
+    		$$invalidate(0, active = true);
+    	}
+
+    	function deactivate() {
+    		$$invalidate(0, active = false);
+    	}
+
+    	function modal_active_binding(value) {
+    		active = value;
+    		$$invalidate(0, active);
+    	}
+
+    	$$self.$set = $$props => {
+    		if ("active" in $$props) $$invalidate(0, active = $$props.active);
+    		if ("content" in $$props) $$invalidate(2, content = $$props.content);
+    	};
+
+    	return [active, deactivate, content, activate, modal_active_binding];
+    }
+
+    class NoteModal extends SvelteComponent {
+    	constructor(options) {
+    		super();
+    		if (!document.getElementById("svelte-1mamwwo-style")) add_css$3();
+
+    		init(this, options, instance$3, create_fragment$3, safe_not_equal, {
+    			active: 0,
+    			content: 2,
+    			activate: 3,
+    			deactivate: 1
+    		});
+    	}
+
+    	get activate() {
+    		return this.$$.ctx[3];
+    	}
+
+    	get deactivate() {
+    		return this.$$.ctx[1];
     	}
     }
 
     exports.Button = Button;
     exports.ImportModal = ImportModal;
+    exports.NoteModal = NoteModal;
 
     return exports;
 

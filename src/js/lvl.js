@@ -7,10 +7,12 @@ window.lvl = function (name) {
     var self = this;
 
     this.board = document.createElement('canvas');
+    this.board.contentEditable = true;
     this.board.id = this.name;
     this.board.width = 1920;
     this.board.height = 1080;
-    this.board.style.cssText = 'width: 80%;'; // Stay at 80% until we can move the bottom bar into rust
+    this.board.style.cssText = 'width: 80%; border: 0px; outline: 0px;'; // Stay at 80% until we can move the bottom bar into rust
+    this.board.style.cursor = 'pointer';
 
     this.levelBuilder = new window.sks.LevelBuilder(this.board);
     console.log(this.levelBuilder);

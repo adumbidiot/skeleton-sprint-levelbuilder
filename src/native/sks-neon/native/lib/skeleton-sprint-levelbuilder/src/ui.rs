@@ -9,12 +9,30 @@ pub fn get_relative_position(bounds: &Rectangle, pos: &Point) -> Point {
 }
 
 #[derive(Debug)]
+pub enum AppState {
+    Builder,
+    NoteModal,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        AppState::Builder
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     AddBlock { index: usize, block: sks::Block },
     ImportLevel { level: crate::Level },
     SetDark { dark: bool },
     SetGrid { grid: bool },
     ChangeActiveBlock { block: Option<sks::Block> },
+    OpenNoteModal,
+
+    NoteModalInputChanged(String),
+    NoteModalSubmit { is_success: bool },
+
+    Nop,
 }
 
 pub struct UiApp {
@@ -29,6 +47,12 @@ pub struct UiApp {
 
     board_state: widgets::board::State,
     tool_bar_state: widgets::tool_bar::State,
+
+    app_state: AppState,
+
+    note_modal_close_button_state: iced_native::widget::button::State,
+    note_modal_text_input_state: iced_native::widget::text_input::State,
+    note_modal_text_input_content: String,
 }
 
 impl UiApp {
@@ -49,6 +73,12 @@ impl UiApp {
 
             board_state: widgets::board::State::new(),
             tool_bar_state: widgets::tool_bar::State::new(),
+
+            app_state: AppState::Builder,
+
+            note_modal_close_button_state: iced_native::widget::button::State::new(),
+            note_modal_text_input_state: iced_native::widget::text_input::State::new(),
+            note_modal_text_input_content: String::new(),
         }
     }
 }
@@ -73,7 +103,27 @@ impl iced_native::Program for UiApp {
             }
             Message::ChangeActiveBlock { block } => {
                 self.active_block = block;
+                // self.tool_bar_state.select_block(&self.active_block);
             }
+            Message::OpenNoteModal => {
+                self.note_modal_text_input_state = iced_native::widget::text_input::State::new();
+                self.note_modal_text_input_content.clear();
+                self.app_state = AppState::NoteModal;
+            }
+            Message::NoteModalInputChanged(content) => {
+                self.note_modal_text_input_content = content;
+            }
+            Message::NoteModalSubmit { is_success } => {
+                if is_success {
+                    let text = std::mem::take(&mut self.note_modal_text_input_content);
+                    self.active_block = Some(sks::Block::Note { text });
+                    self.tool_bar_state.select_block(self.active_block.as_ref());
+                } else {
+                }
+
+                self.app_state = AppState::Builder;
+            }
+            Message::Nop => {}
         }
 
         iced_native::Command::none()
@@ -85,36 +135,89 @@ impl iced_native::Program for UiApp {
         use iced_core::Color;
         use iced_core::Length;
         use iced_graphics::container;
+        use iced_graphics::Text;
 
-        iced_native::Row::new()
-            .push(
-                iced_native::widget::Container::new(
-                    Board::new(
-                        &self.level,
-                        &self.iced_background_image,
-                        &self.iced_block_map,
-                        &mut self.board_state,
+        match self.app_state {
+            AppState::Builder => {
+                let main_content = iced_native::Row::new()
+                    .push(
+                        iced_native::widget::Container::new(
+                            Board::new(
+                                &self.level,
+                                &self.iced_background_image,
+                                &self.iced_block_map,
+                                &mut self.board_state,
+                            )
+                            .grid(self.grid)
+                            .active_block(self.active_block.as_ref()),
+                        )
+                        .padding(20)
+                        .style(Theme)
+                        .center_x()
+                        .center_y()
+                        .height(Length::Fill)
+                        .width(Length::FillPortion(4)),
                     )
-                    .grid(self.grid)
-                    .active_block(self.active_block.as_ref()),
+                    .push(
+                        iced_native::Container::new(ToolBar::new(
+                            &self.iced_block_map,
+                            &mut self.tool_bar_state,
+                            &self.iced_trash_bin_image,
+                        ))
+                        .style(Theme),
+                    )
+                    .spacing(20);
+
+                iced_native::widget::Container::new(main_content)
+                    .padding(20)
+                    .into()
+            }
+            AppState::NoteModal => {
+                let main_content = iced_native::Container::new(
+                    iced_native::Column::new()
+                        .push(
+                            Text::new("Note Content")
+                                .size(70)
+                                .horizontal_alignment(iced_core::HorizontalAlignment::Center),
+                        )
+                        .push(
+                            iced_native::TextInput::new(
+                                &mut self.note_modal_text_input_state,
+                                "note content...",
+                                &self.note_modal_text_input_content,
+                                Message::NoteModalInputChanged,
+                            )
+                            .on_submit(Message::NoteModalSubmit { is_success: true })
+                            .size(50)
+                            .padding(20),
+                        )
+                        .push(iced_native::Space::new(Length::Fill, Length::Fill))
+                        .push(
+                            iced_native::Button::new(
+                                &mut self.note_modal_close_button_state,
+                                Text::new("Exit").size(70),
+                            )
+                            .padding(20)
+                            .on_press(Message::NoteModalSubmit { is_success: false }),
+                        )
+                        .align_items(iced_core::Align::Center)
+                        .spacing(20)
+                        .width(Length::Fill),
                 )
                 .padding(20)
                 .style(Theme)
                 .center_x()
-                .center_y()
-                .height(Length::Fill)
-                .width(Length::FillPortion(4)),
-            )
-            .push(
-                iced_native::Container::new(ToolBar::new(
-                    &self.iced_block_map,
-                    &mut self.tool_bar_state,
-                    &self.iced_trash_bin_image,
-                ))
-                .style(Theme),
-            )
-            .spacing(20)
-            .into()
+                .width(Length::Fill)
+                .height(Length::Fill);
+
+                iced_native::Container::new(main_content)
+                    .padding(20)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .into()
+            }
+        }
     }
 }
 

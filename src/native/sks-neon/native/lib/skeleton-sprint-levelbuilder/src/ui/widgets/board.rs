@@ -66,6 +66,8 @@ impl<'a> Board<'a> {
     }
 }
 
+impl<'a> Board<'a> {}
+
 impl<'a, B> Widget<crate::ui::Message, Renderer<B>> for Board<'a>
 where
     B: Backend,

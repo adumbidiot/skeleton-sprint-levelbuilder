@@ -16,8 +16,11 @@ let MOUSE_KEY_TO_STR = ['left', null, 'right']; // 1 is middle but rust can't ha
 module.exports.LevelBuilder = class LevelBuilder {
     constructor(board) {
         this.internal = new addon.LevelBuilder();
+        
+        
         this.board = board;
         this.boardCtx = this.board.getContext('2d');
+        this.boardCtx.imageSmoothingEnabled = true;
         this.dirty = true;
 
         let mouseHandler = (event) => {
@@ -50,6 +53,11 @@ module.exports.LevelBuilder = class LevelBuilder {
         // Attach globally to capture events outside of canvas
         document.addEventListener("mousedown", mouseHandler);
         document.addEventListener("mouseup", mouseHandler);
+        document.addEventListener("keypress", (event) => {
+            this.internal.emitRecievedChar(event.key);
+            // Same note as above
+            this.dirty = true;
+        });
 
         window.addEventListener('keydown', (event) => {
             this.internal.emitKeyboardEvent('down', event.keyCode);

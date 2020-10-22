@@ -1,0 +1,54 @@
+<Modal bind:active={active}>
+	<div class="title-wrapper">
+		<h1 class="title">Note Content</h1>
+	</div>
+	<div class="close">
+		<Button on:click="{deactivate}">Close</Button>
+	</div>
+</Modal>
+
+<style>
+.entry {
+	margin: 0.25rem 0rem;
+}
+
+.title-wrapper {
+	text-align: center;
+	background-color: red;
+	margin: 0rem 2rem;
+	border-radius: 0.25rem;
+	user-select: none;
+}
+
+.title {
+	text-align: center;
+	text-decoration: none;
+	font-weight: 100;
+}
+
+.close {
+	right: 0.5rem;
+	height: 1.5rem;
+	font-size: 1rem;
+	position: absolute;
+	bottom: 1rem;
+}
+</style>
+
+<script>
+	import Button from './Button.html';
+	import Modal from './Modal.html';
+	
+	export let active = false;
+    export let content = '';
+    
+	export function activate(){
+		active = true;
+	}
+	
+	export function deactivate(){
+		active = false;
+	}
+    
+    
+</script>

@@ -1,5 +1,5 @@
 <div class = "modal" on:click={clickHandler} class:modal-active={active}>
-	<div class="container" on:click={containerClickHandler}>
+	<div class="container" on:click={cancelHandler}>
 		<slot></slot>
 	</div>
 </div>
@@ -43,7 +43,7 @@
 		active = !active;
 	}
 	
-	function containerClickHandler(e){
+	function cancelHandler(e){
 		e.cancelBubble = true;
 	}
 </script>

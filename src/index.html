@@ -4,8 +4,6 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		
 		<script src="./svelte/public/bundle.js"></script>
-	
-		<link rel="import" href="./userModules/tool-bar.html">
 		
 		<link rel="import" href="./bower_components/paper-toggle-button/paper-toggle-button.html">
 		<link rel="import" href="./bower_components/paper-button/paper-button.html">
@@ -224,7 +222,7 @@
 				}
 		</style>
 	</head>
-	<body style="background-color: #303030">
+	<body style="background-color: #303030; margin: 0px;">
         <div id="placeholder">
             <tool-bar></tool-bar>
         </div>
@@ -293,15 +291,18 @@
 				</div>
 			</paper-dialog>
 		</div>
-		<!--
-		<div id="import-modal"></div>
+        <!--
+		<div id="note-modal"></div>
 		<script>
-			window.importModal = new SksComponents.ImportModal({
-				target: document.getElementById('import-modal'),
+			window.noteModal = new SksComponents.NoteModal({
+				target: document.getElementById('note-modal'),
 				props: {},
 			});
+            
+            noteModal.activate();
 		</script>
 		
+        
 		<div id="import-modal-button"></div>
 		<script>
 			const importModalButton = new SksComponents.Button({
