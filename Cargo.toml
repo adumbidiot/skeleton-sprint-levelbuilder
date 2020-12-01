@@ -1,0 +1,5 @@
+[workspace]
+members = [ "lib/skeleton-sprint-levelbuilder" ]
+exclude = [
+    "src/node_modules/sks-neon/native/Cargo.toml",
+]

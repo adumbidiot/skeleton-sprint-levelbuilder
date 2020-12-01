@@ -1,8 +1,12 @@
-use crate::WINDOW_HEIGHT;
-use crate::WINDOW_WIDTH;
+use crate::{
+    WINDOW_HEIGHT,
+    WINDOW_WIDTH,
+};
 use futures::task::SpawnExt;
-use std::convert::TryInto;
-use std::io::Write;
+use std::{
+    convert::TryInto,
+    io::Write,
+};
 
 #[derive(Debug)]
 pub enum RenderError {

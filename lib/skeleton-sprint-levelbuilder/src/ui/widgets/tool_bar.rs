@@ -1,24 +1,30 @@
 use crate::ui::get_relative_position;
-use iced_core::Background;
-use iced_core::Color;
-use iced_core::Length;
-use iced_core::Point;
-use iced_core::Rectangle;
-use iced_core::Size;
-use iced_graphics::Backend;
-use iced_graphics::Defaults;
-use iced_graphics::Primitive;
-use iced_graphics::Renderer;
-use iced_native::keyboard;
-use iced_native::keyboard::KeyCode;
-use iced_native::layout;
-use iced_native::mouse;
-use iced_native::Clipboard;
-use iced_native::Element;
-use iced_native::Event;
-use iced_native::Hasher;
-use iced_native::Layout;
-use iced_native::Widget;
+use iced_core::{
+    Background,
+    Color,
+    Length,
+    Point,
+    Rectangle,
+    Size,
+};
+use iced_graphics::{
+    Backend,
+    Defaults,
+    Primitive,
+    Renderer,
+};
+use iced_native::{
+    keyboard,
+    keyboard::KeyCode,
+    layout,
+    mouse,
+    Clipboard,
+    Element,
+    Event,
+    Hasher,
+    Layout,
+    Widget,
+};
 use sks::block::Direction as SksDirection;
 use std::hash::Hash;
 

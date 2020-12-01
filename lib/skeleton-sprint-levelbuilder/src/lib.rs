@@ -2,13 +2,19 @@ mod renderer;
 mod ui;
 
 use crate::renderer::Renderer;
-use iced_core::keyboard::KeyCode;
-use iced_core::keyboard::Modifiers;
+use iced_core::keyboard::{
+    KeyCode,
+    Modifiers,
+};
 use image::GenericImageView;
-use sks::block::BackgroundType as SksBackgroundType;
-use sks::block::Direction as SksDirection;
-use std::collections::HashMap;
-use std::convert::TryInto;
+use sks::block::{
+    BackgroundType as SksBackgroundType,
+    Direction as SksDirection,
+};
+use std::{
+    collections::HashMap,
+    convert::TryInto,
+};
 
 const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/bolonewt/bolonewt.ttf");
 const M0_DATA: &[u8] = include_bytes!("../assets/images/M0.png");

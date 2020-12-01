@@ -1864,8 +1864,3 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "spirv_cross"
-version = "0.21.0"
-source = "git+https://github.com/adumbidiot/spirv_cross?branch=static-crt#638683b116191119b4775d9f5f20c59e4a1877de"

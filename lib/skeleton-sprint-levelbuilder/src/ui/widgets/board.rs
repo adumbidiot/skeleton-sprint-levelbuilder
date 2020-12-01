@@ -1,13 +1,30 @@
 use crate::ui::get_relative_position;
 use iced_core::Rectangle;
-use iced_graphics::{Backend, Defaults, Primitive, Renderer};
-use iced_native::Clipboard;
-use iced_native::Event;
-use iced_native::{
-    layout, mouse, Background, Color, Element, Hasher, Layout, Length, Point, Size, Widget,
+use iced_graphics::{
+    Backend,
+    Defaults,
+    Primitive,
+    Renderer,
 };
-use std::convert::TryFrom;
-use std::hash::Hash;
+use iced_native::{
+    layout,
+    mouse,
+    Background,
+    Clipboard,
+    Color,
+    Element,
+    Event,
+    Hasher,
+    Layout,
+    Length,
+    Point,
+    Size,
+    Widget,
+};
+use std::{
+    convert::TryFrom,
+    hash::Hash,
+};
 
 pub struct State {
     left_mouse_down: bool,
@@ -140,12 +157,16 @@ where
                             if let Some(block) = self.active_block.cloned() {
                                 messages.push(crate::ui::Message::AddBlock { index, block });
                             }
+
+                            return iced_native::event::Status::Captured;
                         }
                         mouse::Button::Right => {
                             messages.push(crate::ui::Message::AddBlock {
                                 index,
                                 block: sks::Block::Empty,
                             });
+
+                            return iced_native::event::Status::Captured;
                         }
                         _ => {}
                     }
@@ -154,7 +175,6 @@ where
                 iced_native::event::Status::Ignored
             }
             Event::Mouse(mouse::Event::ButtonReleased(button)) => match button {
-                // TODO: Check BB
                 mouse::Button::Left => {
                     self.state.left_mouse_down = false;
                     iced_native::event::Status::Ignored

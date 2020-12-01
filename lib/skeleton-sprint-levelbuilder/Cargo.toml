@@ -3,18 +3,15 @@ name = "skeleton-sprint-levelbuilder"
 version = "0.0.0"
 authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
-futures = "0.3.5"
+futures = "0.3.8"
 human-panic = "1.0.3"
 iced_core = "0.3.0"
 iced_wgpu = { version = "0.3.0", features = [ "image" ] }
 iced_native = "0.3.0"
 iced_graphics = "0.1.0"
-image = "0.23.10"
+image = "0.23.12"
 sks = { path = "C:/Users/nathaniel/Documents/Github/sks-rs" }
-wgpu = "0.6.0"
-
-[patch.crates-io]
-# Static crt
-spirv_cross = { git = "https://github.com/adumbidiot/spirv_cross", branch = "static-crt" }
+wgpu = "0.6.2"

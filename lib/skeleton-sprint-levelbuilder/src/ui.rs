@@ -1,7 +1,9 @@
 mod widgets;
 
-use iced_core::Point;
-use iced_core::Rectangle;
+use iced_core::{
+    Point,
+    Rectangle,
+};
 
 /// Assumes it CAN be translated infallibly. TODO: Do i make this return an option?
 pub fn get_relative_position(bounds: &Rectangle, pos: &Point) -> Point {
@@ -128,12 +130,18 @@ impl iced_native::Program for UiApp {
     }
 
     fn view(&mut self) -> iced_native::Element<Self::Message, Self::Renderer> {
-        use self::widgets::Board;
-        use self::widgets::ToolBar;
-        use iced_core::Color;
-        use iced_core::Length;
-        use iced_graphics::container;
-        use iced_graphics::Text;
+        use self::widgets::{
+            Board,
+            ToolBar,
+        };
+        use iced_core::{
+            Color,
+            Length,
+        };
+        use iced_graphics::{
+            container,
+            Text,
+        };
 
         match self.app_state {
             AppState::Builder => {
