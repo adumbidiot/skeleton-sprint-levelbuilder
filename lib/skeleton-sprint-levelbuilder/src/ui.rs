@@ -1,6 +1,11 @@
 mod widgets;
 
+use self::widgets::{
+    Board,
+    ToolBar,
+};
 use iced_core::{
+    Length,
     Point,
     Rectangle,
 };
@@ -19,6 +24,12 @@ pub enum AppState {
 impl AppState {
     pub fn new() -> Self {
         AppState::Builder
+    }
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -83,6 +94,150 @@ impl UiApp {
             note_modal_text_input_content: String::new(),
         }
     }
+
+    fn builder_view(
+        &mut self,
+    ) -> iced_native::Element<
+        <Self as iced_native::Program>::Message,
+        <Self as iced_native::Program>::Renderer,
+    > {
+        let board = Board::new(
+            &self.level,
+            &self.iced_background_image,
+            &self.iced_block_map,
+            &mut self.board_state,
+        )
+        .grid(self.grid)
+        .active_block(self.active_block.as_ref());
+
+        let tool_bar = ToolBar::new(
+            &self.iced_block_map,
+            &mut self.tool_bar_state,
+            &self.iced_trash_bin_image,
+        );
+
+        let main_content = iced::Row::new()
+            .push(
+                iced::Column::new()
+                    .push(
+                        iced::Container::new(board)
+                            .padding(20)
+                            .style(Theme)
+                            .center_x()
+                            .center_y()
+                            .width(Length::Fill)
+                            .height(Length::Fill),
+                    )
+                    .push(
+                        iced::Container::new(
+                            iced::Row::new()
+                                .push(
+                                    iced::Checkbox::new(self.grid, "Grid", |grid| {
+                                        Message::SetGrid { grid }
+                                    })
+                                    .size(30)
+                                    .text_size(30),
+                                )
+                                .push(
+                                    iced::Checkbox::new(self.level.is_dark(), "Dark", |dark| {
+                                        Message::SetDark { dark }
+                                    })
+                                    .size(30)
+                                    .text_size(30),
+                                )
+                                .spacing(20)
+                                .width(Length::Fill),
+                        )
+                        .width(Length::Fill)
+                        .height(Length::Units(100))
+                        .style(Theme)
+                        .center_y()
+                        .padding(20),
+                    )
+                    .spacing(20)
+                    .width(Length::FillPortion(4)),
+            )
+            .push(iced_native::Container::new(tool_bar).style(Theme))
+            .spacing(20)
+            .padding(20);
+
+        iced::Container::new(
+            iced::Column::new()
+                .push(
+                    iced::Container::new(
+                        iced::Container::new(
+                            iced::Row::new()
+                                .push(
+                                    iced::Text::new("SS")
+                                        .size(80)
+                                        .horizontal_alignment(
+                                            iced_core::HorizontalAlignment::Center,
+                                        )
+                                        .vertical_alignment(iced_core::VerticalAlignment::Center),
+                                )
+                                .spacing(20),
+                        )
+                        .padding(20),
+                    )
+                    .height(Length::Units(100))
+                    .width(Length::Fill)
+                    .style(DarkerTheme),
+                )
+                .push(main_content),
+        )
+        .into()
+    }
+
+    fn note_modal_view(
+        &mut self,
+    ) -> iced_native::Element<
+        <Self as iced_native::Program>::Message,
+        <Self as iced_native::Program>::Renderer,
+    > {
+        let title = iced::Text::new("Note Content")
+            .size(70)
+            .horizontal_alignment(iced_core::HorizontalAlignment::Center);
+
+        let input = iced_native::TextInput::new(
+            &mut self.note_modal_text_input_state,
+            "note content...",
+            &self.note_modal_text_input_content,
+            Message::NoteModalInputChanged,
+        )
+        .on_submit(Message::NoteModalSubmit { is_success: true })
+        .size(50)
+        .padding(20);
+
+        let exit_button = iced_native::Button::new(
+            &mut self.note_modal_close_button_state,
+            iced::Text::new("Exit").size(70),
+        )
+        .padding(20)
+        .on_press(Message::NoteModalSubmit { is_success: false });
+
+        let main_content = iced_native::Container::new(
+            iced_native::Column::new()
+                .push(title)
+                .push(input)
+                .push(iced_native::Space::new(Length::Fill, Length::Fill))
+                .push(exit_button)
+                .align_items(iced_core::Align::Center)
+                .spacing(20)
+                .width(Length::Fill),
+        )
+        .padding(20)
+        .style(Theme)
+        .center_x()
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        iced_native::Container::new(main_content)
+            .padding(20)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x()
+            .into()
+    }
 }
 
 impl iced_native::Program for UiApp {
@@ -130,124 +285,9 @@ impl iced_native::Program for UiApp {
     }
 
     fn view(&mut self) -> iced_native::Element<Self::Message, Self::Renderer> {
-        use self::widgets::{
-            Board,
-            ToolBar,
-        };
-        use iced_core::{
-            Color,
-            Length,
-        };
-        use iced_graphics::{
-            container,
-            Text,
-        };
-
         match self.app_state {
-            AppState::Builder => {
-                let main_content = iced_native::Row::new()
-                    .push(
-                        iced_native::widget::Container::new(
-                            Board::new(
-                                &self.level,
-                                &self.iced_background_image,
-                                &self.iced_block_map,
-                                &mut self.board_state,
-                            )
-                            .grid(self.grid)
-                            .active_block(self.active_block.as_ref()),
-                        )
-                        .padding(20)
-                        .style(Theme)
-                        .center_x()
-                        .center_y()
-                        .height(Length::Fill)
-                        .width(Length::FillPortion(4)),
-                    )
-                    .push(
-                        iced_native::Container::new(ToolBar::new(
-                            &self.iced_block_map,
-                            &mut self.tool_bar_state,
-                            &self.iced_trash_bin_image,
-                        ))
-                        .style(Theme),
-                    )
-                    .spacing(20)
-                    .padding(20);
-
-                iced_native::widget::Container::new(
-                    iced_native::Column::new()
-                        .push(
-                            iced_native::Container::new(
-                                iced_native::Container::new(
-                                    iced_native::Row::new()
-                                        .push(
-                                            Text::new("SS")
-                                                .size(80)
-                                                .horizontal_alignment(
-                                                    iced_core::HorizontalAlignment::Center,
-                                                )
-                                                .vertical_alignment(
-                                                    iced_core::VerticalAlignment::Center,
-                                                ),
-                                        )
-                                        .spacing(20),
-                                )
-                                .padding(20),
-                            )
-                            .height(Length::Units(100))
-                            .width(Length::Fill)
-                            .style(DarkerTheme),
-                        )
-                        .push(main_content),
-                )
-                .into()
-            }
-            AppState::NoteModal => {
-                let main_content = iced_native::Container::new(
-                    iced_native::Column::new()
-                        .push(
-                            Text::new("Note Content")
-                                .size(70)
-                                .horizontal_alignment(iced_core::HorizontalAlignment::Center),
-                        )
-                        .push(
-                            iced_native::TextInput::new(
-                                &mut self.note_modal_text_input_state,
-                                "note content...",
-                                &self.note_modal_text_input_content,
-                                Message::NoteModalInputChanged,
-                            )
-                            .on_submit(Message::NoteModalSubmit { is_success: true })
-                            .size(50)
-                            .padding(20),
-                        )
-                        .push(iced_native::Space::new(Length::Fill, Length::Fill))
-                        .push(
-                            iced_native::Button::new(
-                                &mut self.note_modal_close_button_state,
-                                Text::new("Exit").size(70),
-                            )
-                            .padding(20)
-                            .on_press(Message::NoteModalSubmit { is_success: false }),
-                        )
-                        .align_items(iced_core::Align::Center)
-                        .spacing(20)
-                        .width(Length::Fill),
-                )
-                .padding(20)
-                .style(Theme)
-                .center_x()
-                .width(Length::Fill)
-                .height(Length::Fill);
-
-                iced_native::Container::new(main_content)
-                    .padding(20)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .center_x()
-                    .into()
-            }
+            AppState::Builder => self.builder_view(),
+            AppState::NoteModal => self.note_modal_view(),
         }
     }
 }

@@ -9,7 +9,13 @@ targets = [
 vulnerability = "deny"
 unmaintained = "deny"
 notice = "deny"
-ignore = []
+ignore = [
+    # Blocked on iced bumping tokio to 0.3.x
+    "RUSTSEC-2020-0016",
+    
+    # Blocked on font-kit moving away from dirs
+    "RUSTSEC-2020-0053",
+]
 
 [licenses]
 unlicensed = "deny"
@@ -18,7 +24,18 @@ allow-osi-fsf-free = "neither"
 confidence-threshold = 0.93
 default = "deny"
 private = { ignore = true }
-allow = [ "Apache-2.0", "MIT", "ISC", "Unlicense", "Zlib", "MPL-2.0", "BSD-3-Clause", "OFL-1.1" ]
+allow = [ 
+    "Apache-2.0", 
+    "MIT", 
+    "ISC", 
+    "Unlicense", 
+    "Zlib", 
+    "MPL-2.0", 
+    "BSD-3-Clause", 
+    "OFL-1.1", 
+    "BSL-1.0",
+    "FTL",    
+]
 exceptions = []
 
 [[licenses.clarify]]
@@ -47,6 +64,9 @@ skip = [
     
     # Blocked on png buming miniz_oxide to 0.4.x
     { name = "miniz_oxide", version = "0.3.7" },
+    
+    # Blocked on iced updating tokio to 0.3.x
+    { name = "winapi", version = "0.2.7" }
 ]
 
 # Mostly soundness denies since the advisory lacks a section for soundess bugs

@@ -8,6 +8,7 @@ license = "MIT"
 [dependencies]
 futures = "0.3.8"
 human-panic = "1.0.3"
+iced = "0.2.0"
 iced_core = "0.3.0"
 iced_wgpu = { version = "0.3.0", features = [ "image" ] }
 iced_native = "0.3.0"
