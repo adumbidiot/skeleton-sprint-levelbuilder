@@ -3,7 +3,7 @@ mod ui;
 
 use crate::renderer::Renderer;
 use iced_core::keyboard::KeyCode;
-use iced_core::keyboard::ModifiersState;
+use iced_core::keyboard::Modifiers;
 use image::GenericImageView;
 use sks::block::BackgroundType as SksBackgroundType;
 use sks::block::Direction as SksDirection;
@@ -134,7 +134,7 @@ impl IcedBlockMap {
         });
 
         if let Some(rendered) = rendered {
-            self.insert(block, rendered.clone().into_bgra());
+            self.insert(block, rendered.clone().into_bgra8());
         }
     }
 }
@@ -258,7 +258,7 @@ pub struct App {
     iced_debug: iced_native::Debug,
     iced_viewport: iced_wgpu::Viewport,
     iced_cursor_position: iced_core::Point,
-    iced_modifiers: ModifiersState,
+    iced_modifiers: Modifiers,
 }
 
 impl App {
@@ -297,7 +297,7 @@ impl App {
         let mut iced_block_map = IcedBlockMap::new(iced_native::image::Handle::from_pixels(
             invalid_block_image.width(),
             invalid_block_image.height(),
-            invalid_block_image.into_bgra().into_vec(),
+            invalid_block_image.into_bgra8().into_vec(),
         ));
 
         let iced_background_image = iced_native::image::Handle::from_memory(M0_DATA.into());
@@ -330,7 +330,7 @@ impl App {
             iced_debug,
             iced_viewport,
             iced_cursor_position,
-            iced_modifiers: ModifiersState {
+            iced_modifiers: Modifiers {
                 shift: false,
                 control: false,
                 alt: false,

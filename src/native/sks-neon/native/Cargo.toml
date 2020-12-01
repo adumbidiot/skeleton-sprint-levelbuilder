@@ -12,12 +12,12 @@ name = "sks_neon"
 crate-type = [ "dylib" ]
 
 [build-dependencies]
-neon-build = "0.4.2"
+neon-build = "0.5.3"
 
 [dependencies]
-neon = { version = "0.4.2", features = [ "default-panic-hook" ] }
+neon = { version = "0.5.3", features = [ "default-panic-hook" ] }
 sks = { path = "lib/sks_legacy", package = "sks_legacy" }
-skeleton-sprint-levelbuilder = { path = "lib/skeleton-sprint-levelbuilder" }
+skeleton-sprint-levelbuilder = { path = "../../../../lib/skeleton-sprint-levelbuilder" }
 
 [patch.crates-io]
 # Static crt

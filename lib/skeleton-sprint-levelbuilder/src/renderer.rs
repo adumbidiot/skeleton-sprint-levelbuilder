@@ -113,6 +113,7 @@ impl Renderer {
             default_font: Some(crate::FONT_DATA),
             default_text_size: 20, // Default size
             antialiasing: None,
+            present_mode: wgpu::PresentMode::Immediate,
         };
         let iced_backend = iced_wgpu::Backend::new(&wgpu_device, iced_renderer_settings);
         let iced_renderer = iced_wgpu::Renderer::new(iced_backend);

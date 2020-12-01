@@ -143,7 +143,7 @@ where
         messages: &mut Vec<crate::ui::Message>,
         _renderer: &Renderer<B>,
         _clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> iced_native::event::Status {
         match event {
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let layout_bounds = layout.bounds();
@@ -167,8 +167,12 @@ where
                                 block: Some(block_ref.clone()),
                             });
                         }
+
+                        return iced_native::event::Status::Captured;
                     }
                 }
+
+                iced_native::event::Status::Ignored
             }
             Event::Keyboard(keyboard::Event::KeyPressed { key_code, .. }) => {
                 if self
@@ -202,11 +206,17 @@ where
                                 block: Some(TOOLBAR_BLOCKS[index].clone()),
                             });
                             self.state.selected = Some(index);
+
+                            return iced_native::event::Status::Captured;
                         }
                     }
+
+                    iced_native::event::Status::Ignored
+                } else {
+                    iced_native::event::Status::Ignored
                 }
             }
-            _ => {}
+            _ => iced_native::event::Status::Ignored,
         }
     }
 
@@ -223,6 +233,7 @@ where
         _defaults: &Defaults,
         layout: Layout<'_>,
         _cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> (Primitive, mouse::Interaction) {
         let layout_bounds = layout.bounds();
         let block_size = crate::WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
@@ -264,8 +275,8 @@ where
             primitives.push(Primitive::Quad {
                 bounds,
                 background: Background::Color(Color::TRANSPARENT),
-                border_radius: 0,
-                border_width: 4,
+                border_radius: 0.0,
+                border_width: 4.0,
                 border_color: Color::from_rgb8(255, 0, 0),
             });
         }

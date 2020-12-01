@@ -3,39 +3,8 @@ mod util;
 use neon::prelude::*;
 use sks::*;
 
-fn export_1d_patch(mut cx: FunctionContext) -> JsResult<JsString> {
-    let v = cx.argument::<JsArray>(0)?;
-    let v_str = v.to_string(&mut cx)?;
-    Ok(v_str)
-}
-
 fn hello(mut cx: FunctionContext) -> JsResult<JsString> {
     Ok(cx.string("hello sks-neon"))
-}
-
-/// Converts from the lvlbuilders old internal rep into lbl format
-fn encode_block_lbl(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let block_str = cx.argument::<JsString>(0)?.value();
-    match util::builder_internal_to_block(&block_str) {
-        Some(v) => Ok(cx.string(v.as_lbl()).upcast()),
-        None => {
-            println!("[sks_rust::encode_block_lbl] Unknown: {}", &block_str);
-            Ok(cx.null().upcast())
-        }
-    }
-}
-
-fn block_array_to_js_array<'a, T: neon::object::This>(
-    mut cx: CallContext<'a, T>,
-    blocks: &[Block],
-) -> JsResult<'a, JsValue> {
-    let js_array = JsArray::new(&mut cx, blocks.len() as u32);
-    for (i, block) in blocks.iter().enumerate() {
-        let data_str = util::block_to_builder_internal(&block);
-        let string = cx.string(data_str);
-        js_array.set(&mut cx, i as u32, string)?;
-    }
-    Ok(js_array.upcast())
 }
 
 fn get_frame<'a>(
@@ -189,49 +158,6 @@ declare_types! {
             Ok(cx.undefined().upcast())
         }
 
-        method setActive(mut cx) {
-            let mut this = cx.this();
-
-            let block = {
-                let block = cx.argument::<JsValue>(0)?;
-                if block.is_a::<JsNull>() {
-                    None
-                } else {
-                    let block = block.downcast_or_throw::<JsString, _>(&mut cx)?.value();
-                    let block = util::builder_internal_to_block(&block).unwrap();
-                    Some(block)
-                }
-            };
-
-            {
-                let guard = cx.lock();
-                let mut lvlbuilder = this.borrow_mut(&guard);
-                lvlbuilder.set_active_block(block);
-            }
-
-            Ok(cx.undefined().upcast())
-        }
-
-        method getActive(mut cx) {
-            let this = cx.this();
-            let data = {
-                let guard = cx.lock();
-                let lvlbuilder = this.borrow(&guard);
-                lvlbuilder.get_active_block().cloned()
-            };
-
-            let active = match data {
-                Some(data) => {
-                    cx.string(util::block_to_builder_internal(&data)).upcast()
-                }
-                None => {
-                    cx.null().upcast()
-                }
-            };
-
-            Ok(active)
-        }
-
         method setGrid(mut cx) {
             let grid = cx.argument::<JsBoolean>(0)?.value();
             let mut this = cx.this();
@@ -242,19 +168,6 @@ declare_types! {
             }
 
             Ok(cx.undefined().upcast())
-        }
-
-        method getLevelData(mut cx) {
-            let this = cx.this();
-            let level_data = {
-                let guard = cx.lock();
-                let lvlbuilder = this.borrow(&guard);
-                let data = lvlbuilder.get_level_data().to_vec();
-                drop(lvlbuilder);
-                block_array_to_js_array(cx, &data)?
-            };
-
-            Ok(level_data)
         }
 
         method export(mut cx) {
@@ -281,19 +194,6 @@ declare_types! {
                 lvlbuilder.export_format(&format).unwrap()
             };
             Ok(cx.string(&ret).upcast())
-        }
-
-        method exportLevel(mut cx){
-            let this = cx.this();
-            let level_data = {
-                let guard = cx.lock();
-                let lvlbuilder = this.borrow(&guard);
-                let data = lvlbuilder.export().unwrap();
-                drop(lvlbuilder);
-                block_array_to_js_array(cx, &data)?
-            };
-
-            Ok(level_data)
         }
 
         method setDark(mut cx){
@@ -361,8 +261,6 @@ declare_types! {
 
 register_module!(mut cx, {
     cx.export_function("hello", hello)?;
-    cx.export_function("export1DPatch", export_1d_patch)?;
-    cx.export_function("encodeBlockLBL", encode_block_lbl)?;
 
     cx.export_class::<JsLevelBuilder>("LevelBuilder")
 });

@@ -2,13 +2,7 @@ var addon = require('../native');
 
 console.log(addon.hello());
 
-let data = ['b0', 'a1'];
-console.log(addon.export1DPatch(data));
-
 module.exports.hello = addon.hello;
-
-module.exports.encodeBlockLBL = addon.encodeBlockLBL;
-
 module.exports.decode = addon.decode;
 
 let MOUSE_KEY_TO_STR = ['left', null, 'right']; // 1 is middle but rust can't handle processing that right now
@@ -16,7 +10,6 @@ let MOUSE_KEY_TO_STR = ['left', null, 'right']; // 1 is middle but rust can't ha
 module.exports.LevelBuilder = class LevelBuilder {
     constructor(board) {
         this.internal = new addon.LevelBuilder();
-        
         
         this.board = board;
         this.boardCtx = this.board.getContext('2d');
@@ -86,14 +79,6 @@ module.exports.LevelBuilder = class LevelBuilder {
         this.internal.update();
     }
 
-    getActive() {
-        return this.internal.getActive();
-    }
-
-    setActive(active) {
-        this.internal.setActive(active);
-    }
-
     enableGrid() {
         this.internal.setGrid(true);
         this.dirty = true;
@@ -106,14 +91,6 @@ module.exports.LevelBuilder = class LevelBuilder {
 
     isDirty() {
         return this.dirty;
-    }
-
-    getImage() {
-        this.internal.getImage();
-    }
-
-    getLevelData() {
-        return this.internal.getLevelData();
     }
 
     getImage() {
@@ -130,10 +107,6 @@ module.exports.LevelBuilder = class LevelBuilder {
 
     export(type) {
         return this.internal.export(type);
-    }
-
-    exportLevel() {
-        return this.internal.exportLevel();
     }
 
     setDark(val) {

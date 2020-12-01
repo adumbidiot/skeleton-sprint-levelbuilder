@@ -103,7 +103,6 @@ impl iced_native::Program for UiApp {
             }
             Message::ChangeActiveBlock { block } => {
                 self.active_block = block;
-                // self.tool_bar_state.select_block(&self.active_block);
             }
             Message::OpenNoteModal => {
                 self.note_modal_text_input_state = iced_native::widget::text_input::State::new();
@@ -118,7 +117,6 @@ impl iced_native::Program for UiApp {
                     let text = std::mem::take(&mut self.note_modal_text_input_content);
                     self.active_block = Some(sks::Block::Note { text });
                     self.tool_bar_state.select_block(self.active_block.as_ref());
-                } else {
                 }
 
                 self.app_state = AppState::Builder;
@@ -166,11 +164,36 @@ impl iced_native::Program for UiApp {
                         ))
                         .style(Theme),
                     )
-                    .spacing(20);
+                    .spacing(20)
+                    .padding(20);
 
-                iced_native::widget::Container::new(main_content)
-                    .padding(20)
-                    .into()
+                iced_native::widget::Container::new(
+                    iced_native::Column::new()
+                        .push(
+                            iced_native::Container::new(
+                                iced_native::Container::new(
+                                    iced_native::Row::new()
+                                        .push(
+                                            Text::new("SS")
+                                                .size(80)
+                                                .horizontal_alignment(
+                                                    iced_core::HorizontalAlignment::Center,
+                                                )
+                                                .vertical_alignment(
+                                                    iced_core::VerticalAlignment::Center,
+                                                ),
+                                        )
+                                        .spacing(20),
+                                )
+                                .padding(20),
+                            )
+                            .height(Length::Units(100))
+                            .width(Length::Fill)
+                            .style(DarkerTheme),
+                        )
+                        .push(main_content),
+                )
+                .into()
             }
             AppState::NoteModal => {
                 let main_content = iced_native::Container::new(
@@ -239,6 +262,29 @@ impl iced_graphics::container::StyleSheet for Container {
 
         container::Style {
             background: Color::from_rgb8(0x77, 0x77, 0x77).into(),
+            text_color: Color::WHITE.into(),
+            ..container::Style::default()
+        }
+    }
+}
+
+pub struct DarkerTheme;
+
+impl From<DarkerTheme> for Box<dyn iced_graphics::container::StyleSheet> {
+    fn from(theme: DarkerTheme) -> Self {
+        DarkerContainer.into()
+    }
+}
+
+pub struct DarkerContainer;
+
+impl iced_graphics::container::StyleSheet for DarkerContainer {
+    fn style(&self) -> iced_graphics::container::Style {
+        use iced_core::Color;
+        use iced_graphics::container;
+
+        container::Style {
+            background: Color::from_rgb8(0x30, 0x30, 0x30).into(),
             text_color: Color::WHITE.into(),
             ..container::Style::default()
         }

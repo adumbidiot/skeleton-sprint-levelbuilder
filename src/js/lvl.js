@@ -32,14 +32,6 @@ window.lvl = function (name) {
     loopFunc();
 }
 
-window.lvl.prototype.setActive = function (active) {
-    this.levelBuilder.setActive(active);
-}
-
-window.lvl.prototype.getActive = function () {
-    return this.levelBuilder.getActive();
-}
-
 window.lvl.prototype.setDark = function (value) {
     this.levelBuilder.setDark(value);
 }
@@ -175,11 +167,8 @@ window.level = new lvl('build');
 // Util
 async function getFilename() {
     let filename = await window.dialog.showOpenDialog();
-    if (!filename) {
-        throw "No Dialog Data";
-    }
-    let data = await readFile(filename[0], 'utf8');
-    return data;
+    if (!filename) throw "No Dialog Data";
+    return await readFile(filename[0], 'utf8');
 }
 
 function readFile(path, encoding) {
@@ -197,9 +186,7 @@ function readFile(path, encoding) {
 function openImportPopup() {
     getFilename()
     .then((data) => {
-        if (!window.level.import(data)) {
-            alert("Failed to load file");
-        }
+        if (!window.level.import(data)) alert("Failed to load file");
     })
     .catch((e) => {
         throw e;

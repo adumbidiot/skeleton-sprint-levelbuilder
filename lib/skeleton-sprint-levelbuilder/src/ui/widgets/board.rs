@@ -113,7 +113,7 @@ where
         messages: &mut Vec<crate::ui::Message>,
         _renderer: &Renderer<B>,
         _clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> iced_native::event::Status {
         let layout_bounds = layout.bounds();
         let block_size = layout_bounds.width / sks::LEVEL_WIDTH as f32;
 
@@ -150,15 +150,20 @@ where
                         _ => {}
                     }
                 }
+
+                iced_native::event::Status::Ignored
             }
             Event::Mouse(mouse::Event::ButtonReleased(button)) => match button {
+                // TODO: Check BB
                 mouse::Button::Left => {
                     self.state.left_mouse_down = false;
+                    iced_native::event::Status::Ignored
                 }
                 mouse::Button::Right => {
                     self.state.right_mouse_down = false;
+                    iced_native::event::Status::Ignored
                 }
-                _ => {}
+                _ => iced_native::event::Status::Ignored,
             },
             Event::Mouse(iced_native::mouse::Event::CursorMoved { x, y }) => {
                 if layout_bounds.contains(Point::new(x, y)) {
@@ -178,9 +183,13 @@ where
                             block: sks::Block::Empty,
                         });
                     }
+
+                    return iced_native::event::Status::Captured;
                 }
+
+                iced_native::event::Status::Ignored
             }
-            _ => {}
+            _ => iced_native::event::Status::Ignored,
         }
     }
 
@@ -196,6 +205,7 @@ where
         _defaults: &Defaults,
         layout: Layout<'_>,
         _cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> (Primitive, mouse::Interaction) {
         let layout_bounds = layout.bounds();
         let layout_bounds_width = layout_bounds.width;
@@ -225,7 +235,7 @@ where
             }
         }
 
-        let grid_thickness = 2;
+        let grid_thickness = 2.0;
         if self.grid {
             let mut grid_primitives = Vec::with_capacity(sks::LEVEL_SIZE);
             for i in 0..sks::LEVEL_SIZE {
@@ -241,7 +251,7 @@ where
                 grid_primitives.push(Primitive::Quad {
                     bounds,
                     background: Background::Color(Color::TRANSPARENT),
-                    border_radius: 0,
+                    border_radius: 0.0,
                     border_width: grid_thickness,
                     border_color: Color::BLACK,
                 });

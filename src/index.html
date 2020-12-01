@@ -19,21 +19,14 @@
 		
 		<script src="./js/lvl.js"></script>
 		<script>				
-			// Legacy browser code
-			var darkbox;
-			var gridbox;
-			
+			// Legacy browser code			
 			let exportWindow = {};
-            
 			window.onload = function(){
 				document.getElementById('placeholder').appendChild(level.board);
-				
-				darkbox = document.getElementById('dark');
-				gridbox = document.getElementById('gridbox');
-				darkbox.onchange = function(){
+				document.getElementById('dark').onchange = function(){
 					level.setDark(darkbox.checked);
 				};
-				gridbox.onchange = function(){
+				document.getElementById('gridbox').onchange = function(){
 					if(gridbox.checked) {
 						level.enableGrid();
 					} else {
@@ -42,10 +35,12 @@
 				};
 				
 				exportWindow.main = document.getElementById('export');
+                
 				exportWindow.dev = document.getElementById('export-dev');
 				exportWindow.dev.num = document.getElementById('export-dev-num');
 				exportWindow.dev.button = document.getElementById('export-dev-button');
 				exportWindow.dev.titleBox = document.getElementById('export-dev-title');
+                
 				exportWindow.steam = document.getElementById('export-steam');
 				exportWindow.steam.titleBox = document.getElementById('export-steam-title');
 				exportWindow.steam.button = document.getElementById('export-steam-button');
@@ -56,13 +51,12 @@
 				exportWindow.steam.loading.spinner.container = document.getElementById('export-steam-loading-spinner-container');
 				exportWindow.steam.loading.button = document.getElementById('export-steam-loading-button');
 				exportWindow.steam.loading.button.container = document.getElementById('export-steam-loading-button-container');
+                
 				exportWindow.lbl = document.getElementById('export-lbl');
 				exportWindow.lbl.titleBox = document.getElementById('export-lbl-title');
 				exportWindow.lbl.button = document.getElementById('export-lbl-button');
 				
-				if(!steam){
-					exportWindow.steam.button.setAttribute('disabled', '');
-				}
+				if(!steam) exportWindow.steam.button.setAttribute('disabled', '');
 				
 				exportWindow.steam.loading.setLoaded = function(){
 					exportWindow.steam.loading.status.innerHTML = 'Done';
@@ -222,10 +216,8 @@
 				}
 		</style>
 	</head>
-	<body style="background-color: #303030; margin: 0px;">
-        <div id="placeholder">
-            <tool-bar></tool-bar>
-        </div>
+	<body style="background-color: #383838; margin: 0px;">
+        <div id="placeholder"></div>
         <div style="width:800px; bottom:-20px; position:relative; background-color: #777777; border: 2px solid black; height: 50px; border-radius: 50px;">
             <paper-button raised onclick="exportWindow.main.open()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
             <paper-button raised onclick="openImportPopup()" class = "import" style="position:absolute; top:5px; height: 40px; left:125px;">Import</paper-button>
