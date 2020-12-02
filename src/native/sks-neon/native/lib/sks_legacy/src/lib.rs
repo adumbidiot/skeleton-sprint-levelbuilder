@@ -31,26 +31,6 @@ impl LevelBuilder {
     pub fn update_mouse_position(&mut self, x: f64, y: f64) {
         self.skeleton_sprint_levelbuilder.update_mouse_position(x , y);
     }
-    
-    pub fn set_active_block(&mut self, block: Option<Block>) {
-        self.skeleton_sprint_levelbuilder.set_active_block(block);
-    }
-    
-    pub fn get_active_block(&self) -> Option<&Block> {
-        self.skeleton_sprint_levelbuilder.get_active_block()
-    }
-    
-    pub fn set_grid(&mut self, grid: bool) {
-        self.skeleton_sprint_levelbuilder.set_grid(grid);
-    }
-
-    pub fn set_dark(&mut self, val: bool) {
-        self.skeleton_sprint_levelbuilder.set_dark(val);
-    }
-
-    pub fn get_dark(&self) -> bool {
-        self.skeleton_sprint_levelbuilder.is_dark()
-    }
 
     pub fn get_level_data(&self) -> &[Block] {
         self.skeleton_sprint_levelbuilder.get_level_data()

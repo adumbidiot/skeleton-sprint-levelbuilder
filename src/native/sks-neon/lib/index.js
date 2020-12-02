@@ -79,16 +79,6 @@ module.exports.LevelBuilder = class LevelBuilder {
         this.internal.update();
     }
 
-    enableGrid() {
-        this.internal.setGrid(true);
-        this.dirty = true;
-    }
-
-    disableGrid() {
-        this.internal.setGrid(false);
-        this.dirty = true;
-    }
-
     isDirty() {
         return this.dirty;
     }
@@ -107,14 +97,6 @@ module.exports.LevelBuilder = class LevelBuilder {
 
     export(type) {
         return this.internal.export(type);
-    }
-
-    setDark(val) {
-        this.internal.setDark(val);
-    }
-
-    getDark() {
-        return this.internal.getDark();
     }
 
     import(data) {

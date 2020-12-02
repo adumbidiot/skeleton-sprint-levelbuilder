@@ -1,8 +1,12 @@
+mod style;
 mod widgets;
 
-use self::widgets::{
-    Board,
-    ToolBar,
+use self::{
+    style::DarkTheme,
+    widgets::{
+        Board,
+        ToolBar,
+    },
 };
 use iced_core::{
     Length,
@@ -122,7 +126,7 @@ impl UiApp {
                     .push(
                         iced::Container::new(board)
                             .padding(20)
-                            .style(Theme)
+                            .style(DarkTheme::primary())
                             .center_x()
                             .center_y()
                             .width(Length::Fill)
@@ -150,14 +154,14 @@ impl UiApp {
                         )
                         .width(Length::Fill)
                         .height(Length::Units(100))
-                        .style(Theme)
+                        .style(DarkTheme::primary())
                         .center_y()
                         .padding(20),
                     )
                     .spacing(20)
                     .width(Length::FillPortion(4)),
             )
-            .push(iced_native::Container::new(tool_bar).style(Theme))
+            .push(iced_native::Container::new(tool_bar).style(DarkTheme::primary()))
             .spacing(20)
             .padding(20);
 
@@ -181,7 +185,7 @@ impl UiApp {
                     )
                     .height(Length::Units(100))
                     .width(Length::Fill)
-                    .style(DarkerTheme),
+                    .style(DarkTheme::secondary()),
                 )
                 .push(main_content),
         )
@@ -226,7 +230,7 @@ impl UiApp {
                 .width(Length::Fill),
         )
         .padding(20)
-        .style(Theme)
+        .style(DarkTheme::primary())
         .center_x()
         .width(Length::Fill)
         .height(Length::Fill);
@@ -288,53 +292,6 @@ impl iced_native::Program for UiApp {
         match self.app_state {
             AppState::Builder => self.builder_view(),
             AppState::NoteModal => self.note_modal_view(),
-        }
-    }
-}
-
-// Kinda-Hack for: https://github.com/hecrj/iced/issues/476. *sigh*
-pub struct Theme;
-
-impl From<Theme> for Box<dyn iced_graphics::container::StyleSheet> {
-    fn from(theme: Theme) -> Self {
-        Container.into()
-    }
-}
-
-pub struct Container;
-
-impl iced_graphics::container::StyleSheet for Container {
-    fn style(&self) -> iced_graphics::container::Style {
-        use iced_core::Color;
-        use iced_graphics::container;
-
-        container::Style {
-            background: Color::from_rgb8(0x77, 0x77, 0x77).into(),
-            text_color: Color::WHITE.into(),
-            ..container::Style::default()
-        }
-    }
-}
-
-pub struct DarkerTheme;
-
-impl From<DarkerTheme> for Box<dyn iced_graphics::container::StyleSheet> {
-    fn from(theme: DarkerTheme) -> Self {
-        DarkerContainer.into()
-    }
-}
-
-pub struct DarkerContainer;
-
-impl iced_graphics::container::StyleSheet for DarkerContainer {
-    fn style(&self) -> iced_graphics::container::Style {
-        use iced_core::Color;
-        use iced_graphics::container;
-
-        container::Style {
-            background: Color::from_rgb8(0x30, 0x30, 0x30).into(),
-            text_color: Color::WHITE.into(),
-            ..container::Style::default()
         }
     }
 }

@@ -32,18 +32,6 @@ window.lvl = function (name) {
     loopFunc();
 }
 
-window.lvl.prototype.setDark = function (value) {
-    this.levelBuilder.setDark(value);
-}
-// Disables grid on board
-window.lvl.prototype.disableGrid = function () {
-    this.levelBuilder.disableGrid();
-}
-// Enables grid
-window.lvl.prototype.enableGrid = function () {
-    this.levelBuilder.enableGrid();
-}
-
 lvl.prototype.exportLBL = function () {
     return this.levelBuilder.export('lbl');
 }
@@ -167,7 +155,8 @@ window.level = new lvl('build');
 // Util
 async function getFilename() {
     let filename = await window.dialog.showOpenDialog();
-    if (!filename) throw "No Dialog Data";
+    if (!filename)
+        throw "No Dialog Data";
     return await readFile(filename[0], 'utf8');
 }
 
@@ -186,7 +175,8 @@ function readFile(path, encoding) {
 function openImportPopup() {
     getFilename()
     .then((data) => {
-        if (!window.level.import(data)) alert("Failed to load file");
+        if (!window.level.import(data))
+            alert("Failed to load file");
     })
     .catch((e) => {
         throw e;

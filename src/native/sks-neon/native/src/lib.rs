@@ -158,18 +158,6 @@ declare_types! {
             Ok(cx.undefined().upcast())
         }
 
-        method setGrid(mut cx) {
-            let grid = cx.argument::<JsBoolean>(0)?.value();
-            let mut this = cx.this();
-            {
-                let guard = cx.lock();
-                let mut lvlbuilder = this.borrow_mut(&guard);
-                lvlbuilder.set_grid(grid);
-            }
-
-            Ok(cx.undefined().upcast())
-        }
-
         method export(mut cx) {
             let block = cx.argument_opt(0).map(|v| Ok(v.to_string(&mut cx)?.value())).transpose()?;
             let block = block.unwrap_or_else(|| "lbl".into());
@@ -194,27 +182,6 @@ declare_types! {
                 lvlbuilder.export_format(&format).unwrap()
             };
             Ok(cx.string(&ret).upcast())
-        }
-
-        method setDark(mut cx){
-            let val = cx.argument::<JsBoolean>(0)?.value();
-            let mut this = cx.this();
-            {
-                let guard = cx.lock();
-                let mut lvlbuilder = this.borrow_mut(&guard);
-                lvlbuilder.set_dark(val);
-            }
-            Ok(cx.undefined().upcast())
-        }
-
-        method getDark(mut cx){
-            let this = cx.this();
-            let dark = {
-                let guard = cx.lock();
-                let lvlbuilder = this.borrow(&guard);
-                lvlbuilder.get_dark()
-            };
-            Ok(cx.boolean(dark).upcast())
         }
 
         method import(mut cx){

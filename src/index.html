@@ -203,23 +203,24 @@
 	</head>
 	<body style="background-color: #383838; margin: 0px;">
         <div id="placeholder"></div>
-        <div style="width:800px; bottom:-20px; position:relative; background-color: #777777; border: 2px solid black; height: 50px; border-radius: 50px;">
+        <div style="position:relative; background-color: #777777; border: 2px solid black; height: 50px; border-radius: 50px;">
             <paper-button raised onclick="exportWindow.main.open()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
             <paper-button raised onclick="openImportPopup()" class = "import" style="position:absolute; top:5px; height: 40px; left:125px;">Import</paper-button>
         </div>
         
-			<paper-dialog modal id="export">
-				<div>
-					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.main.close()"></paper-icon-button>
-				</div>
-				<div style="padding-top: 10px;">
-					<h1>Export Options</h1>
-					<paper-button raised onclick="exportWindow.steam.open()" id="export-steam-button">Steam Workshop</paper-button>
-					<paper-button raised onclick="exportWindow.dev.open()" id="export-dev-button">Dev Export</paper-button>
-					<paper-button raised onclick="exportWindow.lbl.open()" id="export-lbl-button">Line by Line Export</paper-button>
-				</div>
-			</paper-dialog>
-			<paper-dialog modal id="export-lbl" style="width:100%; height:100%; top:0px;">
+        <paper-dialog modal id="export">
+            <div>
+                <paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.main.close()"></paper-icon-button>
+			</div>
+			<div style="padding-top: 10px;">
+				<h1>Export Options</h1>
+				<paper-button raised onclick="exportWindow.steam.open()" id="export-steam-button">Steam Workshop</paper-button>
+				<paper-button raised onclick="exportWindow.dev.open()" id="export-dev-button">Dev Export</paper-button>
+				<paper-button raised onclick="exportWindow.lbl.open()" id="export-lbl-button">Line by Line Export</paper-button>
+			</div>
+		</paper-dialog>
+        
+		<paper-dialog modal id="export-lbl" style="width:100%; height:100%; top:0px;">
 				<div>
 					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
 				</div>
