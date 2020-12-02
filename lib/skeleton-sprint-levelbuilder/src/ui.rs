@@ -64,6 +64,7 @@ pub struct UiApp {
 
     board_state: widgets::board::State,
     tool_bar_state: widgets::tool_bar::State,
+    import_button_state: iced::button::State,
 
     app_state: AppState,
 
@@ -90,6 +91,7 @@ impl UiApp {
 
             board_state: widgets::board::State::new(),
             tool_bar_state: widgets::tool_bar::State::new(),
+            import_button_state: iced::button::State::new(),
 
             app_state: AppState::Builder,
 
@@ -148,6 +150,16 @@ impl UiApp {
                                     })
                                     .size(30)
                                     .text_size(30),
+                                )
+                                .push(
+                                    iced::Button::new(
+                                        &mut self.import_button_state,
+                                        iced::Container::new(iced::Text::new("Import").size(40))
+                                            .height(Length::Units(100)),
+                                    )
+                                    .padding(200)
+                                    .style(DarkTheme::primary())
+                                    .on_press(Message::Nop),
                                 )
                                 .spacing(20)
                                 .width(Length::Fill),
@@ -216,7 +228,8 @@ impl UiApp {
             &mut self.note_modal_close_button_state,
             iced::Text::new("Exit").size(70),
         )
-        .padding(20)
+        .padding(40)
+        .style(DarkTheme::primary())
         .on_press(Message::NoteModalSubmit { is_success: false });
 
         let main_content = iced_native::Container::new(

@@ -1,5 +1,5 @@
 mod renderer;
-mod ui;
+pub mod ui;
 
 use crate::renderer::Renderer;
 use iced_core::keyboard::{
@@ -260,7 +260,7 @@ pub struct App {
 
     sks_image_renderer: sks::render::ImageRenderer,
 
-    iced_state: iced_native::program::State<crate::ui::UiApp>,
+    pub iced_state: iced_native::program::State<crate::ui::UiApp>,
     iced_debug: iced_native::Debug,
     iced_viewport: iced_wgpu::Viewport,
     iced_cursor_position: iced_core::Point,
