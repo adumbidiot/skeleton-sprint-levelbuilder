@@ -99,11 +99,6 @@ module.exports.LevelBuilder = class LevelBuilder {
         return this.internal.export(type);
     }
 
-    import(data) {
-        return this.internal.import(data);
-        this.dirty = true;
-    }
-
     setLevel(lvl) {
         this.internal.setLevel(lvl);
     }

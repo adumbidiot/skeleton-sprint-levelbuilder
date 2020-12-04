@@ -153,13 +153,6 @@ if (greenworks.initAPI()) {
 window.level = new lvl('build');
 
 // Util
-async function getFilename() {
-    let filename = await window.dialog.showOpenDialog();
-    if (!filename)
-        throw "No Dialog Data";
-    return await readFile(filename[0], 'utf8');
-}
-
 function readFile(path, encoding) {
     return new Promise((resolve, reject) => {
         window.fs.readFile(path, encoding, function (err, data) {
@@ -169,16 +162,5 @@ function readFile(path, encoding) {
                 resolve(data);
             }
         });
-    });
-}
-
-function openImportPopup() {
-    getFilename()
-    .then((data) => {
-        if (!window.level.import(data))
-            alert("Failed to load file");
-    })
-    .catch((e) => {
-        throw e;
     });
 }

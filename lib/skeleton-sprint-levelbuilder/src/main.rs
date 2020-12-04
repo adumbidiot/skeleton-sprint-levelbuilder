@@ -46,8 +46,21 @@ impl Application for AppWrap {
         }
         .view()
     }
+
+    fn background_color(&self) -> iced::Color {
+        iced::Color::BLACK
+    }
 }
 
 fn main() {
-    AppWrap::run(Default::default()).unwrap();
+    AppWrap::run(iced::Settings {
+        default_font: Some(skeleton_sprint_levelbuilder::FONT_DATA),
+        window: iced::window::Settings {
+            //size: (1920, 1080),
+            size: (1280, 720),
+            ..Default::default()
+        },
+        ..Default::default()
+    })
+    .unwrap();
 }

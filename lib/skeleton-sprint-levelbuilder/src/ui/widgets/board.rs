@@ -21,10 +21,7 @@ use iced_native::{
     Size,
     Widget,
 };
-use std::{
-    convert::TryFrom,
-    hash::Hash,
-};
+use std::hash::Hash;
 
 pub struct State {
     left_mouse_down: bool,
@@ -41,7 +38,7 @@ impl State {
 }
 
 pub struct Board<'a> {
-    level: &'a crate::Level,
+    level: &'a sks::Level,
     background_image: &'a iced_native::image::Handle,
     iced_block_map: &'a crate::IcedBlockMap,
 
@@ -54,7 +51,7 @@ pub struct Board<'a> {
 
 impl<'a> Board<'a> {
     pub fn new(
-        level: &'a crate::Level,
+        level: &'a sks::Level,
         background_image: &'a iced_native::image::Handle,
         iced_block_map: &'a crate::IcedBlockMap,
         state: &'a mut State,
@@ -189,8 +186,17 @@ where
                 if layout_bounds.contains(Point::new(x, y)) {
                     let rel_pos = get_relative_position(&layout_bounds, &cursor_position);
 
-                    let index = (rel_pos.x / block_size) as usize
-                        + ((rel_pos.y / block_size) as usize * sks::LEVEL_WIDTH);
+                    let index_x = (rel_pos.x / block_size) as usize;
+                    let index_y = (rel_pos.y / block_size) as usize * sks::LEVEL_WIDTH;
+                    let mut index = index_x + index_y;
+
+                    // TODO: Fix invalid indexes
+                    if index >= sks::LEVEL_SIZE {
+                        index = sks::LEVEL_SIZE - 1;
+
+                        // dbg!(rel_pos, block_size, index_x, index_y, index);
+                    }
+
                     if self.state.left_mouse_down {
                         if let Some(block) = self.active_block.cloned() {
                             messages.push(crate::ui::Message::AddBlock { index, block });
@@ -255,7 +261,8 @@ where
             }
         }
 
-        let grid_thickness = 2.0;
+        let grid_scale = layout_bounds_width / crate::WINDOW_HEIGHT as f32;
+        let grid_thickness = 2.0 * grid_scale;
         if self.grid {
             let mut grid_primitives = Vec::with_capacity(sks::LEVEL_SIZE);
             for i in 0..sks::LEVEL_SIZE {

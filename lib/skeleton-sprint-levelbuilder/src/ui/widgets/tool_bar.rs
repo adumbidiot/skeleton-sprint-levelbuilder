@@ -21,12 +21,14 @@ use iced_native::{
     Clipboard,
     Element,
     Event,
-    Hasher,
     Layout,
     Widget,
 };
 use sks::block::Direction as SksDirection;
-use std::hash::Hash;
+use std::hash::{
+    Hash,
+    Hasher,
+};
 
 // TODO: Maybe this could be user configurable some day?
 const TOOLBAR_BLOCKS: &[sks::Block] = &[
@@ -76,14 +78,18 @@ fn strip_block(block: &sks::Block) -> sks::Block {
     }
 }
 
-#[derive(Debug, Hash)]
+#[derive(Debug)]
 pub struct State {
     selected: Option<usize>,
+    block_size: f32,
 }
 
 impl State {
     pub fn new() -> State {
-        State { selected: None }
+        State {
+            selected: None,
+            block_size: 40.0,
+        }
     }
 
     pub fn select_block(&mut self, block: Option<&sks::Block>) {
@@ -97,6 +103,13 @@ impl State {
                 self.selected = None;
             }
         }
+    }
+}
+
+impl Hash for State {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.selected.hash(state);
+        self.block_size.to_ne_bytes().hash(state);
     }
 }
 
@@ -133,11 +146,10 @@ where
     }
 
     fn layout(&self, _renderer: &Renderer<B>, limits: &layout::Limits) -> layout::Node {
-        let block_size = crate::WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
-        let max_width = (block_size * 2) as f32;
+        let max_width = self.state.block_size * 2.0;
         let size = limits
             .max_width(max_width as u32)
-            .resolve(Size::new(max_width, crate::WINDOW_HEIGHT as f32));
+            .resolve(Size::new(max_width, limits.max().height));
         layout::Node::new(size)
     }
 
@@ -153,12 +165,12 @@ where
         match event {
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let layout_bounds = layout.bounds();
-                let block_size = crate::WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
 
                 if layout_bounds.contains(cursor_position) {
                     let rel_pos = get_relative_position(&layout_bounds, &cursor_position);
-                    let click_index = (rel_pos.x / block_size as f32) as usize
-                        + ((rel_pos.y / block_size as f32) as usize * 2);
+                    let index_x = (rel_pos.x / self.state.block_size) as usize;
+                    let click_index =
+                        index_x + ((rel_pos.y / self.state.block_size as f32) as usize * 2);
 
                     if let Some(block_ref) = TOOLBAR_BLOCKS.get(click_index) {
                         if Some(click_index) == self.state.selected {
@@ -222,15 +234,20 @@ where
                     iced_native::event::Status::Ignored
                 }
             }
+            Event::Window(iced_native::window::Event::Resized { width, height }) => {
+                if width != 0 && height != 0 {
+                    // self.state.block_size = width as f32 / sks::LEVEL_WIDTH as f32;
+                    self.state.block_size = 40.0;
+                }
+
+                iced_native::event::Status::Ignored
+            }
             _ => iced_native::event::Status::Ignored,
         }
     }
 
-    fn hash_layout(&self, state: &mut Hasher) {
+    fn hash_layout(&self, state: &mut iced_native::Hasher) {
         self.state.hash(state);
-        // self.level.hash(state);
-        // self.grid.hash(state);
-        // self.iced_block_map.hash(state);
     }
 
     fn draw(
@@ -242,40 +259,43 @@ where
         _viewport: &Rectangle,
     ) -> (Primitive, mouse::Interaction) {
         let layout_bounds = layout.bounds();
-        let block_size = crate::WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
 
         // One per toolbar block and one for the selected outline
         let mut primitives = Vec::with_capacity(TOOLBAR_BLOCKS.len() + 1);
 
         for (i, block) in TOOLBAR_BLOCKS.iter().enumerate() {
-            let x = layout_bounds.x + ((i % 2) as f32 * block_size as f32);
-            let y = layout_bounds.y + ((i / 2) as f32 * block_size as f32);
+            let x = layout_bounds.x + ((i % 2) as f32 * self.state.block_size);
+            let y = layout_bounds.y + ((i / 2) as f32 * self.state.block_size);
             // Add boundary
-            let border_size: u8 = 8;
+            let border_size = 8.0;
             let bounds = Rectangle {
-                x: x + f32::from(border_size / 2),
-                y: y + f32::from(border_size / 2),
-                width: (block_size - u32::from(border_size)) as f32,
-                height: (block_size - u32::from(border_size)) as f32,
+                x: x + (border_size / 2.0),
+                y: y + (border_size / 2.0),
+                width: (self.state.block_size - border_size).max(0.0),
+                height: (self.state.block_size - border_size).max(0.0),
             };
 
-            let handle = if !block.is_empty() {
-                self.iced_block_map.get(block.clone())
-            } else {
-                self.iced_trash_bin_image.clone()
-            };
-            primitives.push(Primitive::Image { handle, bounds });
+            let start = bounds.position();
+            let end = start + bounds.size().into();
+            if layout_bounds.contains(start) && layout_bounds.contains(end) {
+                let handle = if !block.is_empty() {
+                    self.iced_block_map.get(block.clone())
+                } else {
+                    self.iced_trash_bin_image.clone()
+                };
+                primitives.push(Primitive::Image { handle, bounds });
+            }
         }
 
         if let Some(index) = self.state.selected {
-            let x = layout_bounds.x + ((index % 2) as f32 * block_size as f32);
-            let y = layout_bounds.y + ((index / 2) as f32 * block_size as f32);
+            let x = layout_bounds.x + ((index % 2) as f32 * self.state.block_size);
+            let y = layout_bounds.y + ((index / 2) as f32 * self.state.block_size);
 
             let bounds = Rectangle {
                 x,
                 y,
-                width: block_size as f32,
-                height: block_size as f32,
+                width: self.state.block_size,
+                height: self.state.block_size,
             };
 
             primitives.push(Primitive::Quad {

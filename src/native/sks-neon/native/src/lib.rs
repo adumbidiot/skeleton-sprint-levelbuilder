@@ -1,7 +1,10 @@
 mod util;
 
 use neon::prelude::*;
-use sks::*;
+pub use skeleton_sprint_levelbuilder::sks;
+use sks::format::LevelNumber;
+
+pub type LevelBuilder = skeleton_sprint_levelbuilder::App;
 
 fn hello(mut cx: FunctionContext) -> JsResult<JsString> {
     Ok(cx.string("hello sks-neon"))
@@ -15,7 +18,7 @@ fn get_frame<'a>(
     let img_data = {
         let guard = cx.lock();
         let mut lvlbuilder = this.borrow_mut(&guard);
-        lvlbuilder.skeleton_sprint_levelbuilder.get_raw_image()
+        lvlbuilder.get_raw_image()
     };
 
     let img_data = match img_data {
@@ -37,11 +40,11 @@ fn get_image<'a>(
     let img_data = {
         let guard = cx.lock();
         let mut lvlbuilder = this.borrow_mut(&guard);
-        lvlbuilder.render_image()
+        lvlbuilder.get_level_image()
     };
 
     let img_data = match img_data {
-        Ok(data) => data.into_rgba(),
+        Ok(data) => data.into_rgba8(),
         Err(_e) => return cx.throw_error("SKS render error"),
     };
 
@@ -54,7 +57,7 @@ fn get_image<'a>(
 declare_types! {
     pub class JsLevelBuilder for LevelBuilder {
         init(_cx) {
-            Ok(sks::LevelBuilder::new())
+            Ok(LevelBuilder::new().expect("sks Levelbuilder"))
         }
 
         method getFrame(mut cx) {
@@ -73,7 +76,7 @@ declare_types! {
                 let guard = cx.lock();
                 let mut lvlbuilder = this.borrow_mut(&guard);
 
-                lvlbuilder.skeleton_sprint_levelbuilder.emit_recieved_char(key);
+                lvlbuilder.emit_recieved_char(key);
             }
 
             Ok(cx.undefined().upcast())
@@ -92,10 +95,10 @@ declare_types! {
 
                 match kind.as_str() {
                     "down" => {
-                        lvlbuilder.skeleton_sprint_levelbuilder.emit_keyboard_key_down(key as u64);
+                        lvlbuilder.emit_keyboard_key_down(key as u64);
                     },
                     "up" => {
-                        lvlbuilder.skeleton_sprint_levelbuilder.emit_keyboard_key_up(key as u64);
+                        lvlbuilder.emit_keyboard_key_up(key as u64);
                     },
                     unknown => panic!("Unknown: {:#?}", unknown),
                 }
@@ -115,16 +118,16 @@ declare_types! {
 
                 match (button.as_str(), kind.as_str()) {
                     ("left", "down") => {
-                        lvlbuilder.skeleton_sprint_levelbuilder.emit_left_mouse_button_down();
+                        lvlbuilder.emit_left_mouse_button_down();
                     },
                     ("right", "down") => {
-                        lvlbuilder.skeleton_sprint_levelbuilder.emit_right_mouse_button_down();
+                        lvlbuilder.emit_right_mouse_button_down();
                     },
                     ("left", "up") => {
-                        lvlbuilder.skeleton_sprint_levelbuilder.emit_left_mouse_button_up();
+                        lvlbuilder.emit_left_mouse_button_up();
                     },
                     ("right", "up") => {
-                        lvlbuilder.skeleton_sprint_levelbuilder.emit_right_mouse_button_up();
+                        lvlbuilder.emit_right_mouse_button_up();
                     },
                     unknown => panic!("Unknown: {:#?}", unknown),
                 }
@@ -164,10 +167,10 @@ declare_types! {
 
             let format = match block.as_str() {
                 "as3" => {
-                    sks::FileFormat::As3
+                    sks::format::FileFormat::As3
                 },
                 "lbl" => {
-                    sks::FileFormat::Lbl
+                    sks::format::FileFormat::Lbl
                 },
                 o => {
                     return cx.throw_error(&format!("Unknown Option: {}", o));
@@ -179,36 +182,17 @@ declare_types! {
              let ret = {
                 let guard = cx.lock();
                 let lvlbuilder = this.borrow_mut(&guard);
-                lvlbuilder.export_format(&format).unwrap()
+                sks::format::encode(&lvlbuilder.export().unwrap(), &format, Some(&lvlbuilder.get_level_number().unwrap_or(LevelNumber::Identifier("x".into())))).unwrap()
             };
             Ok(cx.string(&ret).upcast())
         }
 
-        method import(mut cx){
-            let val = cx.argument::<JsString>(0)?.value();
-            let (level_num, data) = match sks::decode(&val) {
-                Ok(d) => d,
-                Err(_e) => return Ok(cx.boolean(false).upcast()),
-            };
-
-            let mut this = cx.this();
-            {
-                let guard = cx.lock();
-                let mut lvlbuilder = this.borrow_mut(&guard);
-                if let Some(v) = level_num {
-                    lvlbuilder.set_level(v);
-                }
-                lvlbuilder.import(&data);
-            }
-            Ok(cx.boolean(true).upcast())
-        }
-
         method setLevel(mut cx){
             let arg = cx.argument::<JsValue>(0)?;
-            let level_num = if let Ok(v) = arg.downcast::<JsNumber>() {
-                LevelNum::Num(v.value() as usize)
+            let level_number = if let Ok(v) = arg.downcast::<JsNumber>() {
+                LevelNumber::Number(v.value() as usize)
             }else if let Ok(v) = arg.downcast::<JsString>() {
-                LevelNum::String(v.value())
+                LevelNumber::String(v.value())
             }else{
                 return cx.throw_error("Invalid Arg");
             };
@@ -218,7 +202,7 @@ declare_types! {
                 let guard = cx.lock();
                 let mut lvlbuilder = this.borrow_mut(&guard);
 
-                lvlbuilder.set_level(level_num);
+                lvlbuilder.set_level_number(level_number);
             }
 
             Ok(cx.undefined().upcast())

@@ -1,5 +1,6 @@
 use neon::prelude::*;
 use std::convert::TryInto;
+use skeleton_sprint_levelbuilder::RgbaImage;
 
 pub fn byte_slice_to_js_array_buffer<'a, T: neon::object::This>(
     cx: &mut CallContext<'a, T>,
@@ -22,7 +23,7 @@ pub fn byte_slice_to_js_array_buffer<'a, T: neon::object::This>(
 
 pub fn rgba_image_to_image_data<'a, T: neon::object::This>(
     cx: &mut CallContext<'a, T>,
-    img: sks::RgbaImage,
+    img: RgbaImage,
 ) -> Result<Handle<'a, JsObject>, neon::result::Throw> {
     let dimensions = img.dimensions();
     let img_bytes = img.into_vec();

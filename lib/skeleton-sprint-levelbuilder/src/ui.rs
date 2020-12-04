@@ -8,11 +8,13 @@ use self::{
         ToolBar,
     },
 };
+use crate::AppError;
 use iced_core::{
     Length,
     Point,
     Rectangle,
 };
+use sks::format::LevelNumber;
 
 /// Assumes it CAN be translated infallibly. TODO: Do i make this return an option?
 pub fn get_relative_position(bounds: &Rectangle, pos: &Point) -> Point {
@@ -40,7 +42,8 @@ impl Default for AppState {
 #[derive(Debug, Clone)]
 pub enum Message {
     AddBlock { index: usize, block: sks::Block },
-    ImportLevel { level: crate::Level },
+    ImportLevel { level: sks::Level },
+    SetLevelNumber(Option<LevelNumber>),
     SetDark { dark: bool },
     SetGrid { grid: bool },
     ChangeActiveBlock { block: Option<sks::Block> },
@@ -49,12 +52,14 @@ pub enum Message {
     NoteModalInputChanged(String),
     NoteModalSubmit { is_success: bool },
 
+    RequestLevelImport,
+
     Nop,
 }
 
 pub struct UiApp {
-    pub level: crate::Level,
-    pub active_block: Option<sks::Block>,
+    pub level: sks::Level,
+    active_block: Option<sks::Block>,
 
     grid: bool,
 
@@ -65,6 +70,7 @@ pub struct UiApp {
     board_state: widgets::board::State,
     tool_bar_state: widgets::tool_bar::State,
     import_button_state: iced::button::State,
+    export_button_state: iced::button::State,
 
     app_state: AppState,
 
@@ -80,7 +86,7 @@ impl UiApp {
         iced_trash_bin_image: iced_native::image::Handle,
     ) -> Self {
         Self {
-            level: crate::Level::new(),
+            level: sks::Level::new(),
             active_block: None,
 
             grid: true,
@@ -92,6 +98,7 @@ impl UiApp {
             board_state: widgets::board::State::new(),
             tool_bar_state: widgets::tool_bar::State::new(),
             import_button_state: iced::button::State::new(),
+            export_button_state: iced::button::State::new(),
 
             app_state: AppState::Builder,
 
@@ -107,6 +114,8 @@ impl UiApp {
         <Self as iced_native::Program>::Message,
         <Self as iced_native::Program>::Renderer,
     > {
+        let default_padding = 10;
+
         let board = Board::new(
             &self.level,
             &self.iced_background_image,
@@ -127,7 +136,7 @@ impl UiApp {
                 iced::Column::new()
                     .push(
                         iced::Container::new(board)
-                            .padding(20)
+                            .padding(default_padding)
                             .style(DarkTheme::primary())
                             .center_x()
                             .center_y()
@@ -138,44 +147,60 @@ impl UiApp {
                         iced::Container::new(
                             iced::Row::new()
                                 .push(
-                                    iced::Checkbox::new(self.grid, "Grid", |grid| {
-                                        Message::SetGrid { grid }
-                                    })
-                                    .size(30)
-                                    .text_size(30),
+                                    iced::Container::new(
+                                        iced::Checkbox::new(self.grid, "Grid", |grid| {
+                                            Message::SetGrid { grid }
+                                        })
+                                        .size(30)
+                                        .text_size(30),
+                                    )
+                                    .height(Length::Fill)
+                                    .center_y(),
                                 )
                                 .push(
-                                    iced::Checkbox::new(self.level.is_dark(), "Dark", |dark| {
-                                        Message::SetDark { dark }
-                                    })
-                                    .size(30)
-                                    .text_size(30),
+                                    iced::Container::new(
+                                        iced::Checkbox::new(self.level.is_dark(), "Dark", |dark| {
+                                            Message::SetDark { dark }
+                                        })
+                                        .size(30)
+                                        .text_size(30),
+                                    )
+                                    .height(Length::Fill)
+                                    .center_y(),
+                                )
+                                .push(
+                                    iced::Button::new(
+                                        &mut self.export_button_state,
+                                        iced::Text::new("Export").size(30),
+                                    )
+                                    .padding(default_padding)
+                                    .style(DarkTheme::primary())
+                                    .on_press(Message::Nop),
                                 )
                                 .push(
                                     iced::Button::new(
                                         &mut self.import_button_state,
-                                        iced::Container::new(iced::Text::new("Import").size(40))
-                                            .height(Length::Units(100)),
+                                        iced::Text::new("Import").size(30),
                                     )
-                                    .padding(200)
+                                    .padding(default_padding)
                                     .style(DarkTheme::primary())
-                                    .on_press(Message::Nop),
+                                    .on_press(Message::RequestLevelImport),
                                 )
-                                .spacing(20)
+                                .spacing(default_padding)
                                 .width(Length::Fill),
                         )
                         .width(Length::Fill)
-                        .height(Length::Units(100))
+                        .height(Length::Units(70))
                         .style(DarkTheme::primary())
                         .center_y()
-                        .padding(20),
+                        .padding(default_padding),
                     )
-                    .spacing(20)
+                    .spacing(default_padding)
                     .width(Length::FillPortion(4)),
             )
             .push(iced_native::Container::new(tool_bar).style(DarkTheme::primary()))
-            .spacing(20)
-            .padding(20);
+            .spacing(default_padding)
+            .padding(default_padding);
 
         iced::Container::new(
             iced::Column::new()
@@ -185,17 +210,17 @@ impl UiApp {
                             iced::Row::new()
                                 .push(
                                     iced::Text::new("SS")
-                                        .size(80)
+                                        .size(40)
                                         .horizontal_alignment(
                                             iced_core::HorizontalAlignment::Center,
                                         )
                                         .vertical_alignment(iced_core::VerticalAlignment::Center),
                                 )
-                                .spacing(20),
+                                .spacing(default_padding),
                         )
-                        .padding(20),
+                        .padding(default_padding),
                     )
-                    .height(Length::Units(100))
+                    .height(Length::Units(50))
                     .width(Length::Fill)
                     .style(DarkTheme::secondary()),
                 )
@@ -226,7 +251,7 @@ impl UiApp {
 
         let exit_button = iced_native::Button::new(
             &mut self.note_modal_close_button_state,
-            iced::Text::new("Exit").size(70),
+            iced::Text::new("Exit").size(30),
         )
         .padding(40)
         .style(DarkTheme::primary())
@@ -264,10 +289,17 @@ impl iced_native::Program for UiApp {
     fn update(&mut self, message: Message) -> iced_native::Command<Message> {
         match message {
             Message::AddBlock { index, block } => {
-                assert!(self.level.add_block(index, block).is_none());
+                assert!(
+                    self.level.add_block(index, block).is_none(),
+                    "index = {}",
+                    index
+                );
             }
             Message::ImportLevel { level } => {
                 self.level = level;
+            }
+            Message::SetLevelNumber(level_number) => {
+                self.level.set_level_number(level_number);
             }
             Message::SetDark { dark } => {
                 self.level.set_dark(dark);
@@ -294,6 +326,30 @@ impl iced_native::Program for UiApp {
                 }
 
                 self.app_state = AppState::Builder;
+            }
+            Message::RequestLevelImport => {
+                return iced_native::Command::perform(
+                    async {
+                        let level: Result<_, AppError> = tokio::task::spawn_blocking(|| {
+                            let file_path = win_nfd::nfd_open_builder()
+                                .default_path(".".as_ref())
+                                .execute()?;
+
+                            let file_str = std::fs::read_to_string(&file_path)?;
+                            let mut level = sks::Level::new();
+                            level.import_str(&file_str)?;
+
+                            Ok(level)
+                        })
+                        .await
+                        .unwrap();
+
+                        let level = level.expect("SKS LEVEL");
+
+                        Message::ImportLevel { level }
+                    },
+                    std::convert::identity,
+                );
             }
             Message::Nop => {}
         }

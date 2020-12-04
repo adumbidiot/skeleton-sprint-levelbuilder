@@ -7,16 +7,21 @@ use iced_core::keyboard::{
     Modifiers,
 };
 use image::GenericImageView;
-use sks::block::{
-    BackgroundType as SksBackgroundType,
-    Direction as SksDirection,
+pub use image::{
+    DynamicImage,
+    RgbaImage,
+};
+pub use sks;
+use sks::{
+    block::Direction as SksDirection,
+    format::LevelNumber,
 };
 use std::{
     collections::HashMap,
     convert::TryInto,
 };
 
-const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/bolonewt/bolonewt.ttf");
+pub const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/bolonewt/bolonewt.ttf");
 const M0_DATA: &[u8] = include_bytes!("../assets/images/M0.png");
 const TRASH_BIN_DATA: &[u8] = include_bytes!("../assets/images/trash-bin.png");
 
@@ -63,34 +68,24 @@ const BLOCKS: &[sks::Block] = &[
 
 type BgraImage = image::ImageBuffer<image::Bgra<u8>, Vec<u8>>;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum AppError {
-    Render(crate::renderer::RenderError),
-    Image(image::ImageError),
-}
+    #[error("{0}")]
+    Render(#[from] crate::renderer::RenderError),
 
-impl From<crate::renderer::RenderError> for AppError {
-    fn from(e: crate::renderer::RenderError) -> AppError {
-        AppError::Render(e)
-    }
-}
+    #[error("{0}")]
+    Image(#[from] image::ImageError),
 
-impl From<image::ImageError> for AppError {
-    fn from(e: image::ImageError) -> Self {
-        AppError::Image(e)
-    }
-}
+    #[error("{0}")]
+    Nfd(#[from] win_nfd::NfdError),
 
-impl std::fmt::Display for AppError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Render(e) => e.fmt(f),
-            Self::Image(e) => e.fmt(f),
-        }
-    }
-}
+    #[error("{0}")]
+    Io(#[from] std::io::Error),
 
-impl std::error::Error for AppError {}
+    // TODO: impl error for sks errors
+    #[error("sks decode error")]
+    SksDecode(#[from] sks::format::DecodeError),
+}
 
 pub struct IcedBlockMap {
     map: HashMap<sks::block::Block, iced_native::image::Handle>,
@@ -145,116 +140,6 @@ impl IcedBlockMap {
     }
 }
 
-/// A Game Level
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
-pub struct Level {
-    level_data: Vec<sks::Block>,
-    is_dark: bool,
-    background: SksBackgroundType,
-}
-
-impl Level {
-    /// Create a new empty game level
-    pub fn new() -> Self {
-        Level {
-            level_data: vec![sks::Block::Empty; sks::LEVEL_SIZE],
-            is_dark: false,
-            background: SksBackgroundType::Cobble,
-        }
-    }
-
-    /// Get internal level data. This will not contain logic types like backgrounds and dark blocks
-    pub fn get_level_data(&self) -> &[sks::Block] {
-        &self.level_data
-    }
-
-    /// Try to insert a block at the index. Returns the block if it fails.
-    pub fn add_block(&mut self, i: usize, block: sks::Block) -> Option<sks::Block> {
-        if let Some(level_block) = self.level_data.get_mut(i) {
-            *level_block = block;
-            None
-        } else {
-            Some(block)
-        }
-    }
-
-    /// Tries to import a level from a block array
-    pub fn from_block_array(blocks: &[sks::Block]) -> Option<Self> {
-        if blocks.len() != sks::LEVEL_SIZE {
-            return None;
-        }
-
-        let mut level = Level::new();
-
-        for (level_block, block) in level.level_data.iter_mut().zip(blocks.iter()) {
-            let block = match block {
-                sks::Block::Background { background_type } => {
-                    level.background = background_type.clone();
-                    sks::Block::Empty
-                }
-                sks::Block::Dark => {
-                    level.is_dark = true;
-                    sks::Block::Empty
-                }
-                b => b.clone(),
-            };
-
-            *level_block = block;
-        }
-
-        Some(level)
-    }
-
-    /// Tries to export a block array
-    pub fn export_block_array(&self) -> Option<Vec<sks::Block>> {
-        let mut to_insert = Vec::with_capacity(2);
-        if self.is_dark() {
-            to_insert.push(sks::Block::Dark);
-        }
-
-        if self.background != SksBackgroundType::Cobble {
-            to_insert.push(sks::Block::Background {
-                background_type: self.background.clone(),
-            });
-        }
-
-        let data = self
-            .get_level_data()
-            .iter()
-            .map(|block| {
-                if block.is_empty() {
-                    if let Some(block) = to_insert.pop() {
-                        return block;
-                    }
-                }
-                block.clone()
-            })
-            .collect();
-
-        if to_insert.is_empty() {
-            Some(data)
-        } else {
-            None
-        }
-    }
-
-    /// Sets whether the level is dark
-    pub fn set_dark(&mut self, is_dark: bool) {
-        self.is_dark = is_dark;
-    }
-
-    /// Checks whether the level is dark
-    pub fn is_dark(&self) -> bool {
-        self.is_dark
-    }
-}
-
-impl Default for Level {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub struct App {
     renderer: Renderer,
 
@@ -265,6 +150,8 @@ pub struct App {
     iced_viewport: iced_wgpu::Viewport,
     iced_cursor_position: iced_core::Point,
     iced_modifiers: Modifiers,
+
+    tokio_rt: tokio::runtime::Runtime,
 }
 
 impl App {
@@ -272,7 +159,7 @@ impl App {
         human_panic::setup_panic!();
 
         let mut renderer = futures::executor::block_on(Renderer::new())?;
-        dbg!("{:#?}", renderer.wgpu_adapter.get_info());
+        dbg!(renderer.wgpu_adapter.get_info());
 
         let mut sks_image_renderer = sks::render::ImageRenderer::new();
 
@@ -342,18 +229,29 @@ impl App {
                 alt: false,
                 logo: false,
             },
+
+            tokio_rt: tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
         })
     }
 
     pub fn update(&mut self) {
         if !self.iced_state.is_queue_empty() {
-            let _ = self.iced_state.update(
+            let cmd = self.iced_state.update(
                 self.iced_viewport.logical_size(),
                 self.iced_cursor_position,
                 None,
                 &mut self.renderer.iced_renderer,
                 &mut self.iced_debug,
             );
+
+            for msg in self.tokio_rt.block_on(futures::future::join_all(
+                cmd.unwrap_or_else(iced::Command::none).futures(),
+            )) {
+                self.iced_state.queue_message(msg);
+            }
         }
     }
 
@@ -373,16 +271,16 @@ impl App {
 
 /// Intended to be temp interface
 impl App {
-    pub fn get_active_block(&self) -> Option<&sks::Block> {
-        self.iced_state.program().active_block.as_ref()
+    pub fn get_level_number(&self) -> Option<LevelNumber> {
+        self.get_level().get_level_number().cloned()
     }
-
-    pub fn set_active_block(&mut self, block: Option<sks::Block>) {
+    
+    pub fn set_level_number(&mut self, n: LevelNumber) {
         self.iced_state
-            .queue_message(crate::ui::Message::ChangeActiveBlock { block });
+            .queue_message(crate::ui::Message::SetLevelNumber(Some(n)));
     }
 
-    pub fn get_level(&self) -> &Level {
+    pub fn get_level(&self) -> &sks::Level {
         &self.iced_state.program().level
     }
 
@@ -401,28 +299,15 @@ impl App {
     }
 
     pub fn import(&mut self, blocks: &[sks::Block]) -> Option<()> {
-        let level = Level::from_block_array(blocks)?;
+        let mut level = sks::Level::new();
+        level.import_block_array(blocks.try_into().ok()?);
         self.iced_state
             .queue_message(crate::ui::Message::ImportLevel { level });
         Some(())
     }
 
-    pub fn set_dark(&mut self, dark: bool) {
-        self.iced_state
-            .queue_message(crate::ui::Message::SetDark { dark });
-    }
-
-    pub fn is_dark(&self) -> bool {
-        self.get_level().is_dark()
-    }
-
     pub fn export(&self) -> Option<Vec<sks::Block>> {
         self.get_level().export_block_array()
-    }
-
-    pub fn set_grid(&mut self, grid: bool) {
-        self.iced_state
-            .queue_message(crate::ui::Message::SetGrid { grid });
     }
 
     pub fn update_mouse_position(&mut self, x: f64, y: f64) {
