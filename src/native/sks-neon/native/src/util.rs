@@ -1,6 +1,6 @@
 use neon::prelude::*;
-use std::convert::TryInto;
 use skeleton_sprint_levelbuilder::RgbaImage;
+use std::convert::TryInto;
 
 pub fn byte_slice_to_js_array_buffer<'a, T: neon::object::This>(
     cx: &mut CallContext<'a, T>,

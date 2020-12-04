@@ -15,6 +15,7 @@ use iced_core::{
     Rectangle,
 };
 use sks::format::LevelNumber;
+use std::sync::Arc;
 
 /// Assumes it CAN be translated infallibly. TODO: Do i make this return an option?
 pub fn get_relative_position(bounds: &Rectangle, pos: &Point) -> Point {
@@ -25,6 +26,7 @@ pub fn get_relative_position(bounds: &Rectangle, pos: &Point) -> Point {
 pub enum AppState {
     Builder,
     NoteModal,
+    ErrorModal,
 }
 
 impl AppState {
@@ -42,15 +44,18 @@ impl Default for AppState {
 #[derive(Debug, Clone)]
 pub enum Message {
     AddBlock { index: usize, block: sks::Block },
-    ImportLevel { level: sks::Level },
+    ImportLevel(String),
     SetLevelNumber(Option<LevelNumber>),
-    SetDark { dark: bool },
-    SetGrid { grid: bool },
+    SetDark(bool),
+    SetGrid(bool),
     ChangeActiveBlock { block: Option<sks::Block> },
     OpenNoteModal,
+    OpenErrorModal(Arc<AppError>),
 
     NoteModalInputChanged(String),
     NoteModalSubmit { is_success: bool },
+
+    CloseErrorModal,
 
     RequestLevelImport,
 
@@ -74,9 +79,12 @@ pub struct UiApp {
 
     app_state: AppState,
 
-    note_modal_close_button_state: iced_native::widget::button::State,
-    note_modal_text_input_state: iced_native::widget::text_input::State,
+    note_modal_close_button_state: iced::widget::button::State,
+    note_modal_text_input_state: iced::widget::text_input::State,
     note_modal_text_input_content: String,
+
+    error_modal_error: Option<Arc<AppError>>,
+    error_modal_ok_button_state: iced::widget::button::State,
 }
 
 impl UiApp {
@@ -102,9 +110,12 @@ impl UiApp {
 
             app_state: AppState::Builder,
 
-            note_modal_close_button_state: iced_native::widget::button::State::new(),
-            note_modal_text_input_state: iced_native::widget::text_input::State::new(),
+            note_modal_close_button_state: iced::widget::button::State::new(),
+            note_modal_text_input_state: iced::widget::text_input::State::new(),
             note_modal_text_input_content: String::new(),
+
+            error_modal_error: None,
+            error_modal_ok_button_state: iced::widget::button::State::new(),
         }
     }
 
@@ -148,20 +159,20 @@ impl UiApp {
                             iced::Row::new()
                                 .push(
                                     iced::Container::new(
-                                        iced::Checkbox::new(self.grid, "Grid", |grid| {
-                                            Message::SetGrid { grid }
-                                        })
-                                        .size(30)
-                                        .text_size(30),
+                                        iced::Checkbox::new(self.grid, "Grid", Message::SetGrid)
+                                            .size(30)
+                                            .text_size(30),
                                     )
                                     .height(Length::Fill)
                                     .center_y(),
                                 )
                                 .push(
                                     iced::Container::new(
-                                        iced::Checkbox::new(self.level.is_dark(), "Dark", |dark| {
-                                            Message::SetDark { dark }
-                                        })
+                                        iced::Checkbox::new(
+                                            self.level.is_dark(),
+                                            "Dark",
+                                            Message::SetDark,
+                                        )
                                         .size(30)
                                         .text_size(30),
                                     )
@@ -235,6 +246,8 @@ impl UiApp {
         <Self as iced_native::Program>::Message,
         <Self as iced_native::Program>::Renderer,
     > {
+        let default_padding = 10;
+        
         let title = iced::Text::new("Note Content")
             .size(70)
             .horizontal_alignment(iced_core::HorizontalAlignment::Center);
@@ -247,13 +260,13 @@ impl UiApp {
         )
         .on_submit(Message::NoteModalSubmit { is_success: true })
         .size(50)
-        .padding(20);
+        .padding(default_padding);
 
         let exit_button = iced_native::Button::new(
             &mut self.note_modal_close_button_state,
             iced::Text::new("Exit").size(30),
         )
-        .padding(40)
+        .padding(default_padding)
         .style(DarkTheme::primary())
         .on_press(Message::NoteModalSubmit { is_success: false });
 
@@ -264,17 +277,71 @@ impl UiApp {
                 .push(iced_native::Space::new(Length::Fill, Length::Fill))
                 .push(exit_button)
                 .align_items(iced_core::Align::Center)
-                .spacing(20)
+                .spacing(default_padding)
                 .width(Length::Fill),
         )
-        .padding(20)
+        .padding(default_padding)
         .style(DarkTheme::primary())
         .center_x()
         .width(Length::Fill)
         .height(Length::Fill);
 
-        iced_native::Container::new(main_content)
-            .padding(20)
+        iced::Container::new(main_content)
+            .padding(default_padding)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x()
+            .into()
+    }
+
+    fn error_modal_view(
+        &mut self,
+    ) -> iced_native::Element<
+        <Self as iced_native::Program>::Message,
+        <Self as iced_native::Program>::Renderer,
+    > {
+        let default_padding = 10;
+        
+        let title = iced::Text::new("Error")
+            .size(70)
+            .horizontal_alignment(iced_core::HorizontalAlignment::Center);
+
+        let error_msg = iced::Text::new(
+            self.error_modal_error
+                .as_ref()
+                .map(|e| e.to_string())
+                .unwrap_or_else(|| "Error was not specified".into()),
+        )
+        .size(70)
+        .horizontal_alignment(iced_core::HorizontalAlignment::Center);
+
+        let ok_button = iced::Button::new(
+            &mut self.error_modal_ok_button_state,
+            iced::Text::new("Ok").size(30),
+        )
+        .padding(default_padding)
+        .style(DarkTheme::primary())
+        .on_press(Message::NoteModalSubmit { is_success: false });
+
+        let main_content = iced_native::Container::new(
+            iced_native::Column::new()
+                .push(title)
+                .push(iced::Space::new(Length::Fill, Length::Fill))
+                .push(error_msg)
+                .push(iced::Space::new(Length::Fill, Length::Fill))
+                .push(ok_button)
+                .align_items(iced_core::Align::Center)
+                .spacing(default_padding)
+                .width(Length::Fill),
+        )
+        .padding(default_padding)
+        .style(DarkTheme::primary())
+        .center_x()
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        iced::Container::new(main_content)
+            .padding(default_padding)
             .width(Length::Fill)
             .height(Length::Fill)
             .center_x()
@@ -295,16 +362,21 @@ impl iced_native::Program for UiApp {
                     index
                 );
             }
-            Message::ImportLevel { level } => {
-                self.level = level;
+            Message::ImportLevel(level_string) => {
+                if let Err(e) = self.level.import_str(&level_string) {
+                    return iced::Command::perform(
+                        async move { Message::OpenErrorModal(Arc::new(AppError::SksDecode(e))) },
+                        std::convert::identity,
+                    );
+                }
             }
             Message::SetLevelNumber(level_number) => {
                 self.level.set_level_number(level_number);
             }
-            Message::SetDark { dark } => {
+            Message::SetDark(dark) => {
                 self.level.set_dark(dark);
             }
-            Message::SetGrid { grid } => {
+            Message::SetGrid(grid) => {
                 self.grid = grid;
             }
             Message::ChangeActiveBlock { block } => {
@@ -314,6 +386,13 @@ impl iced_native::Program for UiApp {
                 self.note_modal_text_input_state = iced_native::widget::text_input::State::new();
                 self.note_modal_text_input_content.clear();
                 self.app_state = AppState::NoteModal;
+            }
+            Message::OpenErrorModal(e) => {
+                self.error_modal_error = Some(e);
+                self.app_state = AppState::ErrorModal;
+            }
+            Message::CloseErrorModal => {
+                self.app_state = AppState::Builder;
             }
             Message::NoteModalInputChanged(content) => {
                 self.note_modal_text_input_content = content;
@@ -328,7 +407,7 @@ impl iced_native::Program for UiApp {
                 self.app_state = AppState::Builder;
             }
             Message::RequestLevelImport => {
-                return iced_native::Command::perform(
+                return iced::Command::perform(
                     async {
                         let level: Result<_, AppError> = tokio::task::spawn_blocking(|| {
                             let file_path = win_nfd::nfd_open_builder()
@@ -336,17 +415,15 @@ impl iced_native::Program for UiApp {
                                 .execute()?;
 
                             let file_str = std::fs::read_to_string(&file_path)?;
-                            let mut level = sks::Level::new();
-                            level.import_str(&file_str)?;
 
-                            Ok(level)
+                            Ok(file_str)
                         })
                         .await
                         .unwrap();
 
                         let level = level.expect("SKS LEVEL");
 
-                        Message::ImportLevel { level }
+                        Message::ImportLevel(level)
                     },
                     std::convert::identity,
                 );
@@ -361,6 +438,7 @@ impl iced_native::Program for UiApp {
         match self.app_state {
             AppState::Builder => self.builder_view(),
             AppState::NoteModal => self.note_modal_view(),
+            AppState::ErrorModal => self.error_modal_view(),
         }
     }
 }

@@ -274,7 +274,7 @@ impl App {
     pub fn get_level_number(&self) -> Option<LevelNumber> {
         self.get_level().get_level_number().cloned()
     }
-    
+
     pub fn set_level_number(&mut self, n: LevelNumber) {
         self.iced_state
             .queue_message(crate::ui::Message::SetLevelNumber(Some(n)));
@@ -296,14 +296,6 @@ impl App {
 
         self.sks_image_renderer
             .render(self.iced_state.program().level.get_level_data(), &opts)
-    }
-
-    pub fn import(&mut self, blocks: &[sks::Block]) -> Option<()> {
-        let mut level = sks::Level::new();
-        level.import_block_array(blocks.try_into().ok()?);
-        self.iced_state
-            .queue_message(crate::ui::Message::ImportLevel { level });
-        Some(())
     }
 
     pub fn export(&self) -> Option<Vec<sks::Block>> {

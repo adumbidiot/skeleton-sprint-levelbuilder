@@ -3,8 +3,6 @@
 	<head>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		
-		<script src="./svelte/public/bundle.js"></script>
-		
 		<link rel="import" href="./bower_components/paper-button/paper-button.html">
 		<link rel="import" href="./bower_components/paper-checkbox/paper-checkbox.html">
 		<link rel="import" href="./bower_components/paper-dialog/paper-dialog.html">
@@ -20,181 +18,14 @@
 		<script>				
 			// Legacy browser code			
 			let exportWindow = {};
+            
 			window.onload = function(){
 				document.getElementById('placeholder').appendChild(level.board);
-
-				exportWindow.main = document.getElementById('export');
-                
-				exportWindow.dev = document.getElementById('export-dev');
-				exportWindow.dev.num = document.getElementById('export-dev-num');
-				exportWindow.dev.button = document.getElementById('export-dev-button');
-				exportWindow.dev.titleBox = document.getElementById('export-dev-title');
-                
-				exportWindow.steam = document.getElementById('export-steam');
-				exportWindow.steam.titleBox = document.getElementById('export-steam-title');
-				exportWindow.steam.button = document.getElementById('export-steam-button');
-				exportWindow.steam.description = document.getElementById('export-steam-description');
-				exportWindow.steam.loading = document.getElementById('export-steam-loading');
-				exportWindow.steam.loading.status = document.getElementById('export-steam-loading-status');
-				exportWindow.steam.loading.spinner = document.getElementById('export-steam-loading-spinner');
-				exportWindow.steam.loading.spinner.container = document.getElementById('export-steam-loading-spinner-container');
-				exportWindow.steam.loading.button = document.getElementById('export-steam-loading-button');
-				exportWindow.steam.loading.button.container = document.getElementById('export-steam-loading-button-container');
-                
-				exportWindow.lbl = document.getElementById('export-lbl');
-				exportWindow.lbl.titleBox = document.getElementById('export-lbl-title');
-				exportWindow.lbl.button = document.getElementById('export-lbl-button');
-				
-				if(!steam) exportWindow.steam.button.setAttribute('disabled', '');
-				
-				exportWindow.steam.loading.setLoaded = function(){
-					exportWindow.steam.loading.status.innerHTML = 'Done';
-					exportWindow.steam.loading.removeAttribute('modal');
-					exportWindow.steam.loading.spinner.container.style.display = 'none';
-					exportWindow.steam.loading.button.container.style.display = '';
-					exportWindow.steam.loading.notifyResize();
-				}
-				exportWindow.steam.loading.reset = function(){
-					exportWindow.steam.loading.status.innerHTML = 'Uploading Files to Steam Cloud...';
-					exportWindow.steam.loading.setAttribute('modal', '');
-					exportWindow.steam.loading.spinner.container.style.display = '';
-					exportWindow.steam.loading.button.container.style.display = 'none';
-					exportWindow.steam.loading.notifyResize();
-				}
-				
-				exportWindow.closeAll = function(){
-					exportWindow.main.close();
-					exportWindow.steam.close();
-					exportWindow.steam.loading.close();
-					exportWindow.dev.close();
-					exportWindow.lbl.close();
-				}
-				
-				exportWindow.dev.saveFile = function(){
-					let num = exportWindow.dev.num.value || 'x';
-					let data = level.exportDev(num);
-					remote.dialog.showSaveDialog({defaultPath: srcDir + '/' + exportWindow.dev.titleBox.value + '.txt'}, function(path){
-						if(path){
-							fs.writeFile(path, data, function(err){
-								if(err){
-									throw err; //TODO: Handle errors
-								}else{
-									console.log("File Saved!");
-									exportWindow.closeAll();
-								}
-							});
-						}
-					});
-				}
-				
-				exportWindow.lbl.saveFile = function(){
-					let data = level.exportLBL();
-					remote.dialog.showSaveDialog({defaultPath: srcDir + '/' + exportWindow.lbl.titleBox.value + '.txt'}, function(path){
-						if(path){
-							fs.writeFile(path, data, function(err){
-								if(err){
-									throw err; //TODO: Handle errors
-								}else{
-									console.log("File Saved!");
-									exportWindow.closeAll();
-								}
-							});
-						}
-					});
-				}
-				
-				exportWindow.steam.upload = function(){
-					let title = exportWindow.steam.titleBox.value; //TODO: Validate param
-					let description = exportWindow.steam.description.value;
-					
-					let levelPath = title + '.txt';
-					let coverPath = title + '.png';
-					let levelData = level.exportLBL();
-					
-					exportWindow.steam.loading.reset();
-					exportWindow.closeAll();
-					exportWindow.steam.loading.open();
-					
-					function onStatusUpdate(status){
-						let stat;
-						switch(status){
-							case 'Completed on saving files on Steam Cloud.': {
-								stat = 'Sharing Files to Steam Cloud...';
-								break;
-							}
-							case 'Completed on sharing files.': {
-								stat = 'Uploading to Workshop...';
-								break;
-							}
-						}
-						console.log('Workshop Upload Status: ' + status);
-						exportWindow.steam.loading.status.innerHTML = stat;
-						exportWindow.steam.loading.notifyResize();
-					}
-					
-					function getLevelPNG(){
-						return new Promise(function(resolve, reject){
-							resolve(level.exportPNG());
-						});
-					}
-					
-					function createFile(path, data, opts){
-						return new Promise(function(resolve, reject){
-							fs.writeFile(path, data, opts, function(err){
-								if(err){
-									return reject(err);
-								}
-								return resolve();
-							});
-						});
-					}
-					
-					function publishSteamFile(levelPath, levelTitle, levelDescription, levelImagePath, update){
-						return new Promise(function(resolve, reject){
-							greenworks.ugcPublish(levelPath, levelTitle, levelDescription, levelImagePath, function(handle){
-								resolve(handle);
-							}, function(err){
-								reject(err);
-							}, function(msg){
-								update(msg);
-							});
-						});
-					}
-					
-					getLevelPNG().catch(function(err){
-						throw err;
-					}).then(function(data){
-						console.log("Cover File Generated!");
-						data = data.replace(/^data:image\/png;base64,/, "");
-						return createFile(coverPath, data, 'base64');
-					}).catch(function(err){
-						return err;
-					}).then(function(){
-						console.log("Cover File Created!");
-						return createFile(levelPath, levelData);
-					}).catch(function(err){
-						throw err;
-					}).then(function(){
-						console.log('Level File Saved!');
-						return publishSteamFile(levelPath, title, description, coverPath, onStatusUpdate);
-					}).catch(function(err){
-						throw err;
-					}).then(function(handle){
-						console.log("Workshop File Uploaded!");
-						console.log("Workshop File Handle: " + handle);
-						exportWindow.steam.loading.setLoaded();
-					});
-				}
-				
+				exportWindow = getExportWindow();
 			}
 		</script>
 		<style is="custom-style">
 				paper-button.export{
-					background-color: #FF0000;
-					--paper-button-ink-color: #303030;
-					color: #000000;
-				}	
-				paper-button.import{
 					background-color: #FF0000;
 					--paper-button-ink-color: #303030;
 					color: #000000;
@@ -203,9 +34,9 @@
 	</head>
 	<body style="background-color: #383838; margin: 0px;">
         <div id="placeholder"></div>
-        <div style="width: 20%; position:relative; background-color: #777777; border: 2px solid black; height: 50px; border-radius: 50px;">
-            <paper-button raised onclick="exportWindow.main.open()" class = "export" style="position:absolute; top:5px; height: 40px; left:25px;">Export</paper-button>
-        </div>
+        <paper-button raised onclick="exportWindow.main.open()" class = "export">
+            Export
+        </paper-button>
         
         <paper-dialog modal id="export">
             <div>
@@ -220,22 +51,23 @@
 		</paper-dialog>
         
 		<paper-dialog modal id="export-lbl" style="width:100%; height:100%; top:0px;">
-				<div>
-					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
-				</div>
-				<div style="padding-top: 10px;">
-					<h1>Line by Line Export</h1>
-					<paper-input label="Level Title" id="export-lbl-title" value="myLevel"></paper-input>
-					<paper-button raised style="width: 100px;" onclick="exportWindow.lbl.saveFile()">Save</paper-button>
-				</div>
-			</paper-dialog>
-			<paper-dialog modal id="export-dev" style="width:100%; height:100%; top:0px;">
-				<div>
-					<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
-				</div>
-				<div style="padding-top: 10px;">
-					<h1>Developer Export</h1>
-					<paper-input label="Level Title" id="export-dev-title" value="myLevel"></paper-input>
+            <div>
+                <paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
+			</div>
+			<div style="padding-top: 10px;">
+				<h1>Line by Line Export</h1>
+				<paper-input label="Level Title" id="export-lbl-title" value="myLevel"></paper-input>
+				<paper-button raised style="width: 100px;" onclick="exportWindow.lbl.saveFile()">Save</paper-button>
+			</div>
+		</paper-dialog>
+        
+		<paper-dialog modal id="export-dev" style="width:100%; height:100%; top:0px;">
+			<div>
+				<paper-icon-button icon="close" style="top:0px;position:absolute;left:0px;" onclick="exportWindow.closeAll()"></paper-icon-button>
+			</div>
+			<div style="padding-top: 10px;">
+				<h1>Developer Export</h1>
+				<paper-input label="Level Title" id="export-dev-title" value="myLevel"></paper-input>
 					<paper-input label="Level Number" id="export-dev-num" type="number"></paper-input>
 					<paper-button raised style="width: 100px;" onclick="exportWindow.dev.saveFile()">Save</paper-button>
 				</div>
@@ -266,31 +98,5 @@
 				</div>
 			</paper-dialog>
 		</div>
-        <!--
-		<div id="note-modal"></div>
-		<script>
-			window.noteModal = new SksComponents.NoteModal({
-				target: document.getElementById('note-modal'),
-				props: {},
-			});
-            
-            noteModal.activate();
-		</script>
-		
-        
-		<div id="import-modal-button"></div>
-		<script>
-			const importModalButton = new SksComponents.Button({
-				target: document.getElementById('import-modal-button'),
-				props: {
-					content: "Import",
-				},
-			});
-			
-			importModalButton.$on('click', function(e){
-				importModal.activate();
-			});
-		</script>
-		-->
 	</body>
 </html>
