@@ -1,3 +1,4 @@
+mod note_modal;
 mod style;
 mod widgets;
 
@@ -13,6 +14,10 @@ use iced_core::{
     Length,
     Point,
     Rectangle,
+};
+pub use note_modal::{
+    NoteModal,
+    NoteModalMessage,
 };
 use sks::format::LevelNumber;
 use std::sync::Arc;
@@ -49,11 +54,9 @@ pub enum Message {
     SetDark(bool),
     SetGrid(bool),
     ChangeActiveBlock { block: Option<sks::Block> },
-    OpenNoteModal,
     OpenErrorModal(Arc<AppError>),
 
-    NoteModalInputChanged(String),
-    NoteModalSubmit { is_success: bool },
+    NoteModalMessage(NoteModalMessage),
 
     CloseErrorModal,
 
@@ -69,8 +72,8 @@ pub struct UiApp {
     grid: bool,
 
     iced_block_map: crate::IcedBlockMap,
-    iced_background_image: iced_native::image::Handle,
-    iced_trash_bin_image: iced_native::image::Handle,
+    background_image: iced_native::image::Handle,
+    trash_bin_image: iced_native::image::Handle,
 
     board_state: widgets::board::State,
     tool_bar_state: widgets::tool_bar::State,
@@ -79,20 +82,17 @@ pub struct UiApp {
 
     app_state: AppState,
 
-    note_modal_close_button_state: iced::widget::button::State,
-    note_modal_text_input_state: iced::widget::text_input::State,
-    note_modal_text_input_content: String,
+    note_modal: NoteModal,
 
     error_modal_error: Option<Arc<AppError>>,
     error_modal_ok_button_state: iced::widget::button::State,
 }
 
 impl UiApp {
-    pub fn new(
-        iced_block_map: crate::IcedBlockMap,
-        iced_background_image: iced_native::image::Handle,
-        iced_trash_bin_image: iced_native::image::Handle,
-    ) -> Self {
+    pub fn new(iced_block_map: crate::IcedBlockMap) -> Self {
+        let background_image = iced::image::Handle::from_memory(crate::M0_DATA.into());
+        let trash_bin_image = iced::image::Handle::from_memory(crate::TRASH_BIN_DATA.into());
+
         Self {
             level: sks::Level::new(),
             active_block: None,
@@ -100,8 +100,8 @@ impl UiApp {
             grid: true,
 
             iced_block_map,
-            iced_background_image,
-            iced_trash_bin_image,
+            background_image,
+            trash_bin_image,
 
             board_state: widgets::board::State::new(),
             tool_bar_state: widgets::tool_bar::State::new(),
@@ -110,9 +110,7 @@ impl UiApp {
 
             app_state: AppState::Builder,
 
-            note_modal_close_button_state: iced::widget::button::State::new(),
-            note_modal_text_input_state: iced::widget::text_input::State::new(),
-            note_modal_text_input_content: String::new(),
+            note_modal: NoteModal::new(),
 
             error_modal_error: None,
             error_modal_ok_button_state: iced::widget::button::State::new(),
@@ -129,7 +127,7 @@ impl UiApp {
 
         let board = Board::new(
             &self.level,
-            &self.iced_background_image,
+            &self.background_image,
             &self.iced_block_map,
             &mut self.board_state,
         )
@@ -139,7 +137,7 @@ impl UiApp {
         let tool_bar = ToolBar::new(
             &self.iced_block_map,
             &mut self.tool_bar_state,
-            &self.iced_trash_bin_image,
+            &self.trash_bin_image,
         );
 
         let main_content = iced::Row::new()
@@ -240,60 +238,6 @@ impl UiApp {
         .into()
     }
 
-    fn note_modal_view(
-        &mut self,
-    ) -> iced_native::Element<
-        <Self as iced_native::Program>::Message,
-        <Self as iced_native::Program>::Renderer,
-    > {
-        let default_padding = 10;
-        
-        let title = iced::Text::new("Note Content")
-            .size(70)
-            .horizontal_alignment(iced_core::HorizontalAlignment::Center);
-
-        let input = iced_native::TextInput::new(
-            &mut self.note_modal_text_input_state,
-            "note content...",
-            &self.note_modal_text_input_content,
-            Message::NoteModalInputChanged,
-        )
-        .on_submit(Message::NoteModalSubmit { is_success: true })
-        .size(50)
-        .padding(default_padding);
-
-        let exit_button = iced_native::Button::new(
-            &mut self.note_modal_close_button_state,
-            iced::Text::new("Exit").size(30),
-        )
-        .padding(default_padding)
-        .style(DarkTheme::primary())
-        .on_press(Message::NoteModalSubmit { is_success: false });
-
-        let main_content = iced_native::Container::new(
-            iced_native::Column::new()
-                .push(title)
-                .push(input)
-                .push(iced_native::Space::new(Length::Fill, Length::Fill))
-                .push(exit_button)
-                .align_items(iced_core::Align::Center)
-                .spacing(default_padding)
-                .width(Length::Fill),
-        )
-        .padding(default_padding)
-        .style(DarkTheme::primary())
-        .center_x()
-        .width(Length::Fill)
-        .height(Length::Fill);
-
-        iced::Container::new(main_content)
-            .padding(default_padding)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x()
-            .into()
-    }
-
     fn error_modal_view(
         &mut self,
     ) -> iced_native::Element<
@@ -301,7 +245,7 @@ impl UiApp {
         <Self as iced_native::Program>::Renderer,
     > {
         let default_padding = 10;
-        
+
         let title = iced::Text::new("Error")
             .size(70)
             .horizontal_alignment(iced_core::HorizontalAlignment::Center);
@@ -321,7 +265,7 @@ impl UiApp {
         )
         .padding(default_padding)
         .style(DarkTheme::primary())
-        .on_press(Message::NoteModalSubmit { is_success: false });
+        .on_press(Message::CloseErrorModal);
 
         let main_content = iced_native::Container::new(
             iced_native::Column::new()
@@ -365,79 +309,69 @@ impl iced_native::Program for UiApp {
             Message::ImportLevel(level_string) => {
                 if let Err(e) = self.level.import_str(&level_string) {
                     return iced::Command::perform(
-                        async move { Message::OpenErrorModal(Arc::new(AppError::SksDecode(e))) },
-                        std::convert::identity,
+                        async move { Arc::new(AppError::SksDecode(e)) },
+                        Message::OpenErrorModal,
                     );
                 }
             }
             Message::SetLevelNumber(level_number) => {
                 self.level.set_level_number(level_number);
             }
-            Message::SetDark(dark) => {
-                self.level.set_dark(dark);
-            }
-            Message::SetGrid(grid) => {
-                self.grid = grid;
-            }
-            Message::ChangeActiveBlock { block } => {
-                self.active_block = block;
-            }
-            Message::OpenNoteModal => {
-                self.note_modal_text_input_state = iced_native::widget::text_input::State::new();
-                self.note_modal_text_input_content.clear();
-                self.app_state = AppState::NoteModal;
-            }
+            Message::SetDark(dark) => self.level.set_dark(dark),
+            Message::SetGrid(grid) => self.grid = grid,
+            Message::ChangeActiveBlock { block } => self.active_block = block,
             Message::OpenErrorModal(e) => {
                 self.error_modal_error = Some(e);
                 self.app_state = AppState::ErrorModal;
             }
-            Message::CloseErrorModal => {
-                self.app_state = AppState::Builder;
-            }
-            Message::NoteModalInputChanged(content) => {
-                self.note_modal_text_input_content = content;
-            }
-            Message::NoteModalSubmit { is_success } => {
-                if is_success {
-                    let text = std::mem::take(&mut self.note_modal_text_input_content);
-                    self.active_block = Some(sks::Block::Note { text });
-                    self.tool_bar_state.select_block(self.active_block.as_ref());
+            Message::CloseErrorModal => self.app_state = AppState::Builder,
+            Message::NoteModalMessage(msg) => {
+                match msg {
+                    NoteModalMessage::Open => self.app_state = AppState::NoteModal,
+                    NoteModalMessage::Submit => {
+                        let text = self.note_modal.take_content();
+                        self.active_block = Some(sks::Block::Note { text });
+                        self.tool_bar_state.select_block(self.active_block.as_ref());
+
+                        self.app_state = AppState::Builder;
+                    }
+                    NoteModalMessage::Close => self.app_state = AppState::Builder,
+                    _ => {}
                 }
 
-                self.app_state = AppState::Builder;
+                self.note_modal.update(msg)
             }
             Message::RequestLevelImport => {
                 return iced::Command::perform(
                     async {
-                        let level: Result<_, AppError> = tokio::task::spawn_blocking(|| {
+                        let level_string: Result<_, AppError> = tokio::task::spawn_blocking(|| {
                             let file_path = win_nfd::nfd_open_builder()
                                 .default_path(".".as_ref())
                                 .execute()?;
 
-                            let file_str = std::fs::read_to_string(&file_path)?;
-
-                            Ok(file_str)
+                            Ok(std::fs::read_to_string(&file_path)?)
                         })
                         .await
-                        .unwrap();
+                        .map_err(From::from);
 
-                        let level = level.expect("SKS LEVEL");
-
-                        Message::ImportLevel(level)
+                        level_string
                     },
-                    std::convert::identity,
+                    |level_string| match level_string {
+                        Ok(Ok(data)) => Message::ImportLevel(data),
+                        Err(e) | Ok(Err(e)) => Message::OpenErrorModal(Arc::new(e)),
+                    },
                 );
             }
             Message::Nop => {}
         }
 
-        iced_native::Command::none()
+        iced::Command::none()
     }
 
     fn view(&mut self) -> iced_native::Element<Self::Message, Self::Renderer> {
         match self.app_state {
             AppState::Builder => self.builder_view(),
-            AppState::NoteModal => self.note_modal_view(),
+            AppState::NoteModal => self.note_modal.view().map(Message::NoteModalMessage),
             AppState::ErrorModal => self.error_modal_view(),
         }
     }

@@ -1,11 +1,20 @@
 use iced::Application;
 use iced_native::program::Program;
 
-pub struct AppWrap(skeleton_sprint_levelbuilder::App);
+pub struct AppWrap(skeleton_sprint_levelbuilder::ui::UiApp);
 
 impl AppWrap {
     pub fn new() -> Self {
-        AppWrap(skeleton_sprint_levelbuilder::App::new().unwrap())
+        let mut sks_image_renderer = sks::render::ImageRenderer::new();
+        let block_size = skeleton_sprint_levelbuilder::WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
+        let invalid_block_image =
+            skeleton_sprint_levelbuilder::render_invalid_block_image(block_size);
+        let iced_block_map = skeleton_sprint_levelbuilder::init_iced_block_map(
+            invalid_block_image,
+            &mut sks_image_renderer,
+        );
+
+        AppWrap(skeleton_sprint_levelbuilder::ui::UiApp::new(iced_block_map))
     }
 }
 
@@ -15,7 +24,7 @@ impl Default for AppWrap {
     }
 }
 
-// This is nothing but a test area, UB is fine for now
+// This is nothing but a test area for now
 impl Application for AppWrap {
     type Executor = iced::executor::Default;
     type Message = skeleton_sprint_levelbuilder::ui::Message;
@@ -30,21 +39,11 @@ impl Application for AppWrap {
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
-        #[allow(clippy::cast_ref_to_mut)]
-        unsafe {
-            &mut *(self.0.iced_state.program() as *const skeleton_sprint_levelbuilder::ui::UiApp
-                as *mut skeleton_sprint_levelbuilder::ui::UiApp)
-        }
-        .update(message)
+        self.0.update(message)
     }
 
     fn view(&mut self) -> iced::Element<Self::Message> {
-        #[allow(clippy::cast_ref_to_mut)]
-        unsafe {
-            &mut *(self.0.iced_state.program() as *const skeleton_sprint_levelbuilder::ui::UiApp
-                as *mut skeleton_sprint_levelbuilder::ui::UiApp)
-        }
-        .view()
+        self.0.view()
     }
 
     fn background_color(&self) -> iced::Color {
@@ -56,7 +55,6 @@ fn main() {
     AppWrap::run(iced::Settings {
         default_font: Some(skeleton_sprint_levelbuilder::FONT_DATA),
         window: iced::window::Settings {
-            //size: (1920, 1080),
             size: (1280, 720),
             ..Default::default()
         },

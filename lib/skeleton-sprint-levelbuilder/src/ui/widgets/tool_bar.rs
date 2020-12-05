@@ -1,4 +1,8 @@
-use crate::ui::get_relative_position;
+use crate::ui::{
+    get_relative_position,
+    Message,
+    NoteModalMessage,
+};
 use iced_core::{
     Background,
     Color,
@@ -178,7 +182,7 @@ where
                             messages.push(crate::ui::Message::ChangeActiveBlock { block: None });
                         } else if block_ref.is_note() {
                             // self.state.selected = Some(click_index);
-                            messages.push(crate::ui::Message::OpenNoteModal);
+                            messages.push(Message::NoteModalMessage(NoteModalMessage::Open));
                         } else {
                             self.state.selected = Some(click_index);
                             messages.push(crate::ui::Message::ChangeActiveBlock {

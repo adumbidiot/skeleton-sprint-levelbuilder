@@ -25,8 +25,8 @@ pub const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/bolonewt/bolonewt.t
 const M0_DATA: &[u8] = include_bytes!("../assets/images/M0.png");
 const TRASH_BIN_DATA: &[u8] = include_bytes!("../assets/images/trash-bin.png");
 
-const WINDOW_WIDTH: u32 = 1920;
-const WINDOW_HEIGHT: u32 = 1080;
+pub const WINDOW_WIDTH: u32 = 1920;
+pub const WINDOW_HEIGHT: u32 = 1080;
 
 const BLOCKS: &[sks::Block] = &[
     sks::Block::Block,
@@ -68,23 +68,31 @@ const BLOCKS: &[sks::Block] = &[
 
 type BgraImage = image::ImageBuffer<image::Bgra<u8>, Vec<u8>>;
 
+/// App error
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
+    /// Render Error
     #[error("{0}")]
     Render(#[from] crate::renderer::RenderError),
 
+    /// Image error
     #[error("{0}")]
     Image(#[from] image::ImageError),
 
+    /// Native file dialog error
     #[error("{0}")]
     Nfd(#[from] win_nfd::NfdError),
 
     #[error("{0}")]
     Io(#[from] std::io::Error),
 
-    // TODO: impl error for sks errors
-    #[error("sks decode error")]
+    /// Level Decode Error
+    #[error("{0}")]
     SksDecode(#[from] sks::format::DecodeError),
+
+    /// Tokio Join Error
+    #[error("{0}")]
+    JoinError(#[from] tokio::task::JoinError),
 }
 
 pub struct IcedBlockMap {
@@ -140,6 +148,48 @@ impl IcedBlockMap {
     }
 }
 
+pub fn render_invalid_block_image(block_size: u32) -> image::DynamicImage {
+    let invalid_block_image = image::RgbaImage::from_fn(block_size, block_size, |x, y| {
+        let x = i64::from(x);
+        let y = i64::from(y);
+        let top = i64::from(block_size - 1);
+        let right = i64::from(block_size - 1);
+        let limit = 4;
+
+        if (x - y).abs() < limit
+            || (x - (top - y)).abs() < limit
+            || (x - right).abs() < limit
+            || (y - top).abs() < limit
+            || x < limit
+            || y < limit
+        {
+            image::Rgba([0, 0, 0, 255])
+        } else {
+            image::Rgba([255, 105, 180, 255])
+        }
+    });
+
+    image::DynamicImage::ImageRgba8(invalid_block_image)
+}
+
+pub fn init_iced_block_map(
+    invalid_block_image: image::DynamicImage,
+    sks_image_renderer: &mut sks::render::ImageRenderer,
+) -> IcedBlockMap {
+    let invalid_block_image = iced::image::Handle::from_pixels(
+        invalid_block_image.width(),
+        invalid_block_image.height(),
+        invalid_block_image.into_bgra8().into_vec(),
+    );
+    let mut iced_block_map = IcedBlockMap::new(invalid_block_image);
+
+    for block in BLOCKS.iter().cloned() {
+        iced_block_map.generate(sks_image_renderer, block);
+    }
+
+    iced_block_map
+}
+
 pub struct App {
     renderer: Renderer,
 
@@ -163,48 +213,16 @@ impl App {
 
         let mut sks_image_renderer = sks::render::ImageRenderer::new();
 
-        let block_width = WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
-        let block_height = WINDOW_HEIGHT / sks::LEVEL_HEIGHT as u32;
+        let block_size = WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
+        let invalid_block_image = render_invalid_block_image(block_size);
 
-        let invalid_block_image = image::RgbaImage::from_fn(block_width, block_height, |x, y| {
-            let x = i64::from(x);
-            let y = i64::from(y);
-            let top = i64::from(block_height - 1);
-            let right = i64::from(block_width - 1);
-            let limit = 4;
+        let iced_block_map = init_iced_block_map(invalid_block_image, &mut sks_image_renderer);
 
-            if (x - y).abs() < limit
-                || (x - (top - y)).abs() < limit
-                || (x - right).abs() < limit
-                || (y - top).abs() < limit
-                || x < limit
-                || y < limit
-            {
-                image::Rgba([0, 0, 0, 255])
-            } else {
-                image::Rgba([255, 105, 180, 255])
-            }
-        });
-        let invalid_block_image = image::DynamicImage::ImageRgba8(invalid_block_image);
-
-        let mut iced_block_map = IcedBlockMap::new(iced_native::image::Handle::from_pixels(
-            invalid_block_image.width(),
-            invalid_block_image.height(),
-            invalid_block_image.into_bgra8().into_vec(),
-        ));
-
-        let iced_background_image = iced_native::image::Handle::from_memory(M0_DATA.into());
-        let iced_trash_bin_image = iced_native::image::Handle::from_memory(TRASH_BIN_DATA.into());
-
-        for block in BLOCKS.iter().cloned() {
-            iced_block_map.generate(&mut sks_image_renderer, block);
-        }
+        let iced_app = self::ui::UiApp::new(iced_block_map);
 
         let mut iced_debug = iced_native::Debug::new();
-        let iced_viewport_size = iced_core::Size::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+        let iced_viewport_size = iced::Size::new(WINDOW_WIDTH, WINDOW_HEIGHT);
         let iced_viewport = iced_wgpu::Viewport::with_physical_size(iced_viewport_size, 1.0);
-        let iced_app =
-            crate::ui::UiApp::new(iced_block_map, iced_background_image, iced_trash_bin_image);
         let iced_cursor_position = iced_core::Point::new(0.0, 0.0);
         let iced_state = iced_native::program::State::new(
             iced_app,
@@ -232,8 +250,7 @@ impl App {
 
             tokio_rt: tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
-                .build()
-                .unwrap(),
+                .build()?,
         })
     }
 
