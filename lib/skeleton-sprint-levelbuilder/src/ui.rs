@@ -30,8 +30,10 @@ pub fn get_relative_position(bounds: &Rectangle, pos: &Point) -> Point {
 #[derive(Debug)]
 pub enum AppState {
     Builder,
+
     NoteModal,
     ErrorModal,
+    ExportModal,
 }
 
 impl AppState {
@@ -47,6 +49,12 @@ impl Default for AppState {
 }
 
 #[derive(Debug, Clone)]
+pub enum ExportModalState {
+    ChooseFormat,
+    Lbl,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     AddBlock { index: usize, block: sks::Block },
     ImportLevel(String),
@@ -55,12 +63,20 @@ pub enum Message {
     SetGrid(bool),
     ChangeActiveBlock { block: Option<sks::Block> },
     OpenErrorModal(Arc<AppError>),
+    OpenExportModal,
 
     NoteModalMessage(NoteModalMessage),
 
     CloseErrorModal,
 
+    ChangeExportModalState(ExportModalState),
+    ExportModalLblTextInputChanged(String),
+
+    CloseExportModal,
+
     RequestLevelImport,
+
+    RequestSaveLblExport,
 
     Nop,
 }
@@ -86,6 +102,12 @@ pub struct UiApp {
 
     error_modal_error: Option<Arc<AppError>>,
     error_modal_ok_button_state: iced::widget::button::State,
+
+    export_modal_state: ExportModalState,
+    export_modal_close_button_state: iced::widget::button::State,
+    export_modal_export_type_lbl_button_state: iced::widget::button::State,
+    export_modal_export_lbl_text_input_state: iced::widget::text_input::State,
+    export_modal_export_lbl_text_input_content: String,
 }
 
 impl UiApp {
@@ -114,15 +136,17 @@ impl UiApp {
 
             error_modal_error: None,
             error_modal_ok_button_state: iced::widget::button::State::new(),
+
+            export_modal_state: ExportModalState::ChooseFormat,
+            export_modal_close_button_state: iced::widget::button::State::new(),
+            export_modal_export_type_lbl_button_state: iced::widget::button::State::new(),
+
+            export_modal_export_lbl_text_input_state: iced::widget::text_input::State::new(),
+            export_modal_export_lbl_text_input_content: String::new(),
         }
     }
 
-    fn builder_view(
-        &mut self,
-    ) -> iced_native::Element<
-        <Self as iced_native::Program>::Message,
-        <Self as iced_native::Program>::Renderer,
-    > {
+    fn builder_view(&mut self) -> iced::Element<<Self as iced_native::Program>::Message> {
         let default_padding = 10;
 
         let board = Board::new(
@@ -133,6 +157,46 @@ impl UiApp {
         )
         .grid(self.grid)
         .active_block(self.active_block.as_ref());
+
+        let helper_bar = iced::Row::new()
+            .push(
+                iced::Container::new(
+                    iced::Checkbox::new(self.grid, "Grid", Message::SetGrid)
+                        .size(30)
+                        .text_size(30),
+                )
+                .height(Length::Fill)
+                .center_y(),
+            )
+            .push(
+                iced::Container::new(
+                    iced::Checkbox::new(self.level.is_dark(), "Dark", Message::SetDark)
+                        .size(30)
+                        .text_size(30),
+                )
+                .height(Length::Fill)
+                .center_y(),
+            )
+            .push(
+                iced::Button::new(
+                    &mut self.export_button_state,
+                    iced::Text::new("Export").size(30),
+                )
+                .padding(default_padding)
+                .style(DarkTheme::primary())
+                .on_press(Message::OpenExportModal),
+            )
+            .push(
+                iced::Button::new(
+                    &mut self.import_button_state,
+                    iced::Text::new("Import").size(30),
+                )
+                .padding(default_padding)
+                .style(DarkTheme::primary())
+                .on_press(Message::RequestLevelImport),
+            )
+            .spacing(default_padding)
+            .width(Length::Fill);
 
         let tool_bar = ToolBar::new(
             &self.iced_block_map,
@@ -153,56 +217,12 @@ impl UiApp {
                             .height(Length::Fill),
                     )
                     .push(
-                        iced::Container::new(
-                            iced::Row::new()
-                                .push(
-                                    iced::Container::new(
-                                        iced::Checkbox::new(self.grid, "Grid", Message::SetGrid)
-                                            .size(30)
-                                            .text_size(30),
-                                    )
-                                    .height(Length::Fill)
-                                    .center_y(),
-                                )
-                                .push(
-                                    iced::Container::new(
-                                        iced::Checkbox::new(
-                                            self.level.is_dark(),
-                                            "Dark",
-                                            Message::SetDark,
-                                        )
-                                        .size(30)
-                                        .text_size(30),
-                                    )
-                                    .height(Length::Fill)
-                                    .center_y(),
-                                )
-                                .push(
-                                    iced::Button::new(
-                                        &mut self.export_button_state,
-                                        iced::Text::new("Export").size(30),
-                                    )
-                                    .padding(default_padding)
-                                    .style(DarkTheme::primary())
-                                    .on_press(Message::Nop),
-                                )
-                                .push(
-                                    iced::Button::new(
-                                        &mut self.import_button_state,
-                                        iced::Text::new("Import").size(30),
-                                    )
-                                    .padding(default_padding)
-                                    .style(DarkTheme::primary())
-                                    .on_press(Message::RequestLevelImport),
-                                )
-                                .spacing(default_padding)
-                                .width(Length::Fill),
-                        )
-                        .width(Length::Fill)
-                        .height(Length::Units(70))
-                        .style(DarkTheme::primary())
-                        .center_y()
-                        .padding(default_padding),
+                        iced::Container::new(helper_bar)
+                            .width(Length::Fill)
+                            .height(Length::Units(70))
+                            .style(DarkTheme::primary())
+                            .center_y()
+                            .padding(default_padding),
                     )
                     .spacing(default_padding)
                     .width(Length::FillPortion(4)),
@@ -238,12 +258,7 @@ impl UiApp {
         .into()
     }
 
-    fn error_modal_view(
-        &mut self,
-    ) -> iced_native::Element<
-        <Self as iced_native::Program>::Message,
-        <Self as iced_native::Program>::Renderer,
-    > {
+    fn error_modal_view(&mut self) -> iced::Element<<Self as iced_native::Program>::Message> {
         let default_padding = 10;
 
         let title = iced::Text::new("Error")
@@ -272,6 +287,81 @@ impl UiApp {
                 .push(title)
                 .push(iced::Space::new(Length::Fill, Length::Fill))
                 .push(error_msg)
+                .push(iced::Space::new(Length::Fill, Length::Fill))
+                .push(ok_button)
+                .align_items(iced_core::Align::Center)
+                .spacing(default_padding)
+                .width(Length::Fill),
+        )
+        .padding(default_padding)
+        .style(DarkTheme::primary())
+        .center_x()
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        iced::Container::new(main_content)
+            .padding(default_padding)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x()
+            .into()
+    }
+
+    fn export_modal_view(&mut self) -> iced::Element<<Self as iced_native::Program>::Message> {
+        let default_padding = 10;
+
+        let title = iced::Text::new("Export")
+            .size(70)
+            .horizontal_alignment(iced_core::HorizontalAlignment::Center);
+
+        let content = match self.export_modal_state {
+            ExportModalState::ChooseFormat => iced::Column::new()
+                .push(iced::Text::new("Export Formats").size(30))
+                .push(
+                    iced::Button::new(
+                        &mut self.export_modal_export_type_lbl_button_state,
+                        iced::Text::new("Level File")
+                            .horizontal_alignment(iced::HorizontalAlignment::Center)
+                            .size(30),
+                    )
+                    .style(DarkTheme::primary())
+                    .on_press(Message::ChangeExportModalState(ExportModalState::Lbl)),
+                )
+                .align_items(iced::Align::Center)
+                .spacing(default_padding),
+            ExportModalState::Lbl => iced::Column::new()
+                .push(iced::Text::new("Level File").size(30))
+                .push(iced::TextInput::new(
+                    &mut self.export_modal_export_lbl_text_input_state,
+                    "",
+                    &self.export_modal_export_lbl_text_input_content,
+                    Message::ExportModalLblTextInputChanged,
+                ))
+                .push(
+                    iced::Button::new(
+                        &mut self.export_modal_export_type_lbl_button_state,
+                        iced::Text::new("Export").size(30),
+                    )
+                    .style(DarkTheme::primary())
+                    .on_press(Message::RequestSaveLblExport),
+                )
+                .align_items(iced::Align::Center)
+                .spacing(default_padding),
+        };
+
+        let ok_button = iced::Button::new(
+            &mut self.export_modal_close_button_state,
+            iced::Text::new("Close").size(30),
+        )
+        .padding(default_padding)
+        .style(DarkTheme::primary())
+        .on_press(Message::CloseErrorModal);
+
+        let main_content = iced_native::Container::new(
+            iced_native::Column::new()
+                .push(title)
+                .push(iced::Space::new(Length::Fill, Length::Fill))
+                .push(content)
                 .push(iced::Space::new(Length::Fill, Length::Fill))
                 .push(ok_button)
                 .align_items(iced_core::Align::Center)
@@ -325,6 +415,14 @@ impl iced_native::Program for UiApp {
                 self.app_state = AppState::ErrorModal;
             }
             Message::CloseErrorModal => self.app_state = AppState::Builder,
+            Message::CloseExportModal => self.app_state = AppState::Builder,
+            Message::OpenExportModal => {
+                self.export_modal_state = ExportModalState::ChooseFormat;
+                self.app_state = AppState::ExportModal;
+            }
+            Message::ChangeExportModalState(export_modal_state) => {
+                self.export_modal_state = export_modal_state
+            }
             Message::NoteModalMessage(msg) => {
                 match msg {
                     NoteModalMessage::Open => self.app_state = AppState::NoteModal,
@@ -340,6 +438,9 @@ impl iced_native::Program for UiApp {
                 }
 
                 self.note_modal.update(msg)
+            }
+            Message::ExportModalLblTextInputChanged(content) => {
+                self.export_modal_export_lbl_text_input_content = content;
             }
             Message::RequestLevelImport => {
                 return iced::Command::perform(
@@ -362,6 +463,45 @@ impl iced_native::Program for UiApp {
                     },
                 );
             }
+            Message::RequestSaveLblExport => {
+                let lbl = self.level.export_str(sks::format::FileFormat::Lbl);
+
+                let mut filename = String::new();
+                if !self.export_modal_export_lbl_text_input_content.is_empty() {
+                    filename.push_str(&self.export_modal_export_lbl_text_input_content);
+                    filename.push_str(".txt");
+                }
+
+                return iced::Command::perform(
+                    async move {
+                        let res = tokio::task::spawn_blocking(move || {
+                            let lbl = lbl.map_err(AppError::from)?;
+
+                            let mut nfd = win_nfd::nfd_save_builder();
+                            nfd.default_path(".".as_ref())
+                                .filetype("lbl file".as_ref(), "*.txt".as_ref());
+
+                            if !filename.is_empty() {
+                                nfd.filename(filename.as_ref());
+                            }
+
+                            let save_path = nfd.execute()?;
+
+                            std::fs::write(save_path, lbl)?;
+
+                            Result::<_, AppError>::Ok(())
+                        })
+                        .await
+                        .map_err(AppError::from);
+
+                        match res {
+                            Ok(Ok(())) => Message::CloseExportModal,
+                            Ok(Err(e)) | Err(e) => Message::OpenErrorModal(Arc::new(e)),
+                        }
+                    },
+                    std::convert::identity,
+                );
+            }
             Message::Nop => {}
         }
 
@@ -373,6 +513,7 @@ impl iced_native::Program for UiApp {
             AppState::Builder => self.builder_view(),
             AppState::NoteModal => self.note_modal.view().map(Message::NoteModalMessage),
             AppState::ErrorModal => self.error_modal_view(),
+            AppState::ExportModal => self.export_modal_view(),
         }
     }
 }

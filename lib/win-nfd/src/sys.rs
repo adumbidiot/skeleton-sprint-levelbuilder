@@ -2,6 +2,7 @@
 use com::{
     interfaces::IUnknown,
     sys::{
+        BOOL,
         GUID,
         HRESULT,
     },
@@ -24,6 +25,10 @@ use winapi::{
     },
     um::{
         objidl::IBindCtx,
+        propsys::{
+            IPropertyDescriptionList,
+            IPropertyStore,
+        },
         shobjidl_core::{
             IShellItemArray,
             IShellItemFilter,
@@ -44,6 +49,13 @@ pub const CLSID_FILEOPENDIALOG: GUID = GUID {
     data2: 0xE88A,
     data3: 0x4dde,
     data4: 0xA5A160F82A20AEF7_u64.to_be_bytes(),
+};
+
+pub const CLSID_FILESAVEDIALOG: GUID = GUID {
+    data1: 0xC0B4E2F3,
+    data2: 0xBA21,
+    data3: 0x4773,
+    data4: 0x8DBA335EC946EB8B_u64.to_be_bytes(),
 };
 
 com::interfaces! {
@@ -68,7 +80,7 @@ com::interfaces! {
         pub fn SetFolder(&self, psi: IShellItem) -> HRESULT;
         fn GetFolder(&self, ppsi: *mut IShellItem) -> HRESULT;
         fn GetCurrentSelection(&self, ppsi: *mut IShellItem) -> HRESULT;
-        fn SetFileName(&self, pszName: LPCWSTR)-> HRESULT;
+        pub fn SetFileName(&self, pszName: LPCWSTR)-> HRESULT;
         fn GetFileName(&self, pszName: *mut LPWSTR) -> HRESULT;
         fn SetTitle(&self, pszTitle: LPCWSTR) -> HRESULT;
         fn SetOkButtonLabel(&self, pszText: LPCWSTR) -> HRESULT;
@@ -96,5 +108,15 @@ com::interfaces! {
         pub fn GetDisplayName(&self, sigdnName: SIGDN, ppszName: *mut LPWSTR) -> HRESULT;
         fn GetAttributes(&self, sfgaoMask: SFGAOF, psfgaoAttribs: *mut SFGAOF) -> HRESULT;
         fn Compare(&self, psi: IShellItem, hint: SICHINTF, piOrder: *mut c_int) -> HRESULT;
+    }
+
+    #[uuid("84bccd23-5fde-4cdb-aea4-af64b83d78ab")]
+    pub unsafe interface IFileSaveDialog: IFileDialog {
+        fn SetSaveAsItem(&self, psi: IShellItem) -> HRESULT;
+        fn SetProperties(&self, pStore: *mut IPropertyStore) -> HRESULT;
+        fn SetCollectedProperties(&self, pList: *mut IPropertyDescriptionList, fAppendDefault: BOOL) -> HRESULT;
+        fn GetProperties(&self, ppStore: *mut *mut IPropertyStore) -> HRESULT;
+        // Missing: IFileOperationProgressSink
+        fn ApplyProperties(&self, psi: IShellItem, pStore: *mut IPropertyStore, hwnd: HWND, pSink: *mut c_void) -> HRESULT;
     }
 }

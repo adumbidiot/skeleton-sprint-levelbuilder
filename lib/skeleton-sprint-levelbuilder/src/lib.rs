@@ -93,6 +93,10 @@ pub enum AppError {
     /// Tokio Join Error
     #[error("{0}")]
     JoinError(#[from] tokio::task::JoinError),
+
+    /// Sks Level Error
+    #[error("{0}")]
+    LevelError(#[from] sks::level::LevelError),
 }
 
 pub struct IcedBlockMap {
@@ -195,7 +199,7 @@ pub struct App {
 
     sks_image_renderer: sks::render::ImageRenderer,
 
-    pub iced_state: iced_native::program::State<crate::ui::UiApp>,
+    iced_state: iced_native::program::State<crate::ui::UiApp>,
     iced_debug: iced_native::Debug,
     iced_viewport: iced_wgpu::Viewport,
     iced_cursor_position: iced_core::Point,
@@ -212,12 +216,9 @@ impl App {
         dbg!(renderer.wgpu_adapter.get_info());
 
         let mut sks_image_renderer = sks::render::ImageRenderer::new();
-
         let block_size = WINDOW_WIDTH / sks::LEVEL_WIDTH as u32;
         let invalid_block_image = render_invalid_block_image(block_size);
-
         let iced_block_map = init_iced_block_map(invalid_block_image, &mut sks_image_renderer);
-
         let iced_app = self::ui::UiApp::new(iced_block_map);
 
         let mut iced_debug = iced_native::Debug::new();
@@ -316,7 +317,7 @@ impl App {
     }
 
     pub fn export(&self) -> Option<Vec<sks::Block>> {
-        self.get_level().export_block_array()
+        self.get_level().export_block_array().ok()
     }
 
     pub fn update_mouse_position(&mut self, x: f64, y: f64) {
