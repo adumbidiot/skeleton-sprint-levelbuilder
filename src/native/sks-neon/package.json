@@ -6,7 +6,7 @@
   "author": "adumbidiot <nathaniel.daniel23@outlook.com>",
   "license": "MIT",
   "dependencies": {
-    "neon-cli": "^0.3.1"
+    "neon-cli": "^0.5.3"
   },
   "scripts": {
     "install": "neon build --release"

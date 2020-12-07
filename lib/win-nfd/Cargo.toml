@@ -1,0 +1,15 @@
+[package]
+name = "win-nfd"
+version = "0.0.0"
+authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+com = "0.3.0"
+thiserror = "1.0.22"
+widestring = "0.4.3"
+winapi = { version = "0.3.9", features = [ "shlobj", "shtypes", "shobjidl_core", "combaseapi", "winbase" ] }
+
+[dev-dependencies]
+winapi = { version = "0.3.9", features = [ "shellscalingapi"] }

@@ -2,126 +2,104 @@ var addon = require('../native');
 
 console.log(addon.hello());
 
-let data = ['b0', 'a1'];
-console.log(addon.export1DPatch(data));
-
 module.exports.hello = addon.hello;
-
-module.exports.encodeBlockLBL = addon.encodeBlockLBL;
-
 module.exports.decode = addon.decode;
 
+let MOUSE_KEY_TO_STR = ['left', null, 'right']; // 1 is middle but rust can't handle processing that right now
+
 module.exports.LevelBuilder = class LevelBuilder {
-	constructor() {
-		this.internal = new addon.LevelBuilder();
-		this.internalDirty = true; //Temp until i can render from js
-		this.internalData = null;
-		
-		this.grid = true;
-		this.dirty = true;
-		
-	}
+    constructor(board) {
+        this.internal = new addon.LevelBuilder();
+        
+        this.board = board;
+        this.boardCtx = this.board.getContext('2d');
+        this.boardCtx.imageSmoothingEnabled = true;
+        this.dirty = true;
 
-	enableGrid() {
-		this.grid = true;
-		this.dirty = true;
-	}
+        let mouseHandler = (event) => {
+            let {
+                x,
+                y
+            } = this.extractCanvasCoords(event);
+            this.internal.updateMousePosition(x, y);
 
-	disableGrid() {
-		this.grid = false;
-		this.dirty = true;
-	}
+            if (event.type === "mousemove") {}
+            else if (event.type === "mousedown") {
+                let mouseButton = MOUSE_KEY_TO_STR[event.button];
+                if (mouseButton)
+                    this.internal.emitMouseButtonEvent(mouseButton, "down");
+            } else if (event.type === "mouseup") {
+                let mouseButton = MOUSE_KEY_TO_STR[event.button];
+                if (mouseButton)
+                    this.internal.emitMouseButtonEvent(mouseButton, "up");
+            } else {
+                console.warn("Unknown Event", event)
+            }
 
-	isDirty() {
-		return this.dirty;
-	}
+            // We are forced to redraw here since we don't know if the events caused a redraw on the rust side.
+            // In the future maybe rust could expose the dirty flag? However we would be working in the wrong direction.
+            this.dirty = true;
+        };
 
-	getImage() {
-		this.internal.getImage();
-	}
-	
-	getLevelData() {
-		return this.internal.getLevelData();
-	}
+        this.board.addEventListener("mousemove", mouseHandler);
 
-	// Canvas MUST be 1920 x 1080
-	drawImage(ctx) {
-		ctx.clearRect(0, 0, 1920, 1080);
-		
-		if(this.internalDirty){
-			let binary = new Uint8ClampedArray(this.internal.getImage());
-			let imageData = new ImageData(binary, 1920, 1080);
-			ctx.putImageData(imageData, 0, 0);
-			this.internalData = imageData;
-			this.internalDirty = false;
-		}else{
-			ctx.putImageData(this.internalData, 0, 0);
-		}
+        // Attach globally to capture events outside of canvas
+        document.addEventListener("mousedown", mouseHandler);
+        document.addEventListener("mouseup", mouseHandler);
+        document.addEventListener("keypress", (event) => {
+            this.internal.emitRecievedChar(event.key);
+            // Same note as above
+            this.dirty = true;
+        });
 
-		this.dirty = false;
-	}
-	
-	render(ctx) {
-		let boxSize = 1920 / 32;
-		let data = this.internal.getLevelData();
-		for(var i = 0; i < 18 * 32; i++){
-			let y = (i / 32) | 0;
-			let x = i % 32;
-			switch(data[i]) {
-				case "null": {
-						break;
-				}
-				default: {
-					//console.log(data[i]);
-					let block = data[i];
-					
-					if(data[i].startsWith('Note:')){
-						block = 'note';
-					}
-					
-					let img = new Image();
-					img.src = './images/' + block + '.png';
-					
-					ctx.drawImage(img, x * boxSize, y * boxSize, boxSize, boxSize);
-				}
-			}
-			
-		}
-	}
+        window.addEventListener('keydown', (event) => {
+            this.internal.emitKeyboardEvent('down', event.keyCode);
+            // Same note as above
+            this.dirty = true;
+        });
+    }
 
-	drawGrid(ctx) {
-		if(!this.grid) return;
-		let boxSize = 1920 / 32;
-		ctx.beginPath();
-		ctx.lineWidth = "4";
-		ctx.strokeStyle = "black";
-		for (var i = 0; i < 32 * 18; i++) {
-			let y = (i / 32) | 0;
-			let x = i % 32;
-			ctx.rect(x * boxSize, y * boxSize, boxSize, boxSize);
-		}
-		ctx.stroke();
-	}
-	
-	addBlock(i, block){
-		this.internal.addBlock(i, block);
-		this.dirty = true;
-	}
-	
-	exportLevel(){
-		return this.internal.exportLevel();
-	}
-	
-	setDark(val){
-		this.internal.setDark(val);
-	}
-	
-	getDark(){
-		return this.internal.getDark();
-	}
-	
-	import(data){
-		this.dirty = true;
-		return this.internal.import(data);
-	}
+    extractCanvasCoords(event) {
+        const rect = this.board.getBoundingClientRect();
+        const xRaw = event.clientX - rect.left;
+        const yRaw = event.clientY - rect.top;
+
+        const scaleX = this.board.width / rect.width;
+        const scaleY = this.board.height / rect.height;
+
+        const x = xRaw * scaleX;
+        const y = yRaw * scaleY;
+        return {
+            x,
+            y
+        };
+    }
+
+    update() {
+        this.internal.update();
+    }
+
+    isDirty() {
+        return this.dirty;
+    }
+
+    getImage() {
+        return this.internal.getImage();
+    }
+
+    // Canvas MUST be 1920 x 1080
+    drawFrame(ctx) {
+        this.boardCtx.clearRect(0, 0, this.board.width, this.board.height);
+        let img = this.internal.getFrame();
+        this.boardCtx.drawImage(img, 0, 0, 1920, 1080);
+        this.dirty = false;
+    }
+
+    export(type) {
+        return this.internal.export(type);
+    }
+
+    setLevel(lvl) {
+        this.internal.setLevel(lvl);
+    }
 }

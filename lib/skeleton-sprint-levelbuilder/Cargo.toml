@@ -1,0 +1,22 @@
+[package]
+name = "skeleton-sprint-levelbuilder"
+version = "0.0.0"
+authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+futures = "0.3.8"
+human-panic = "1.0.3"
+iced = { version = "0.2.0", features = [ "tokio" ] }
+iced_core = "0.3.0"
+iced_wgpu = { version = "0.3.0", features = [ "image" ] }
+iced_native = "0.3.0"
+iced_graphics = "0.1.0"
+image = "0.23.12"
+# sks = { path = "C:/Users/nathaniel/Documents/Github/sks-rs" }
+sks = { git = "https://github.com/adumbidiot/sks-rs", branch = "levelbuilder-upgrades" }
+thiserror = "1.0.22"
+tokio = { version = "0.3.5", features = [ "rt-multi-thread" ] }
+wgpu = "0.6.2"
+win-nfd = { path = "../win-nfd" }

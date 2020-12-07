@@ -1,0 +1,13 @@
+[workspace]
+members = [ 
+    "lib/skeleton-sprint-levelbuilder",
+    "lib/win-nfd",
+]
+
+exclude = [
+    "src/node_modules/sks-neon/native/Cargo.toml",
+]
+
+[profile.release]
+lto = "fat"
+codegen-units= 1

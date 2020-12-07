@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
 license = "MIT"
 build = "build.rs"
-exclude = ["artifacts.json", "index.node"]
+exclude = [ "artifacts.json", "index.node" ]
 edition = "2018"
 
 [lib]
@@ -12,8 +12,12 @@ name = "sks_neon"
 crate-type = [ "dylib" ]
 
 [build-dependencies]
-neon-build = "0.3.0"
+neon-build = "0.5.3"
 
 [dependencies]
-neon = "0.3.3"
-sks = { path = "lib/sks_legacy", package = "sks_legacy" }
+neon = { version = "0.5.3", features = [ "default-panic-hook" ] }
+skeleton-sprint-levelbuilder = { path = "../../../../lib/skeleton-sprint-levelbuilder" }
+
+[patch.crates-io]
+# Static crt
+spirv_cross = { git = "https://github.com/adumbidiot/spirv_cross", branch = "static-crt" }

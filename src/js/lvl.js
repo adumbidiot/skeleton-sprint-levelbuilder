@@ -1,247 +1,334 @@
-window.lvl = function(name){
-	this.name = name;
-	this.active = null;
-	var self = this;
-	
-	this.gridTemplate = document.createElement('div');
-	this.gridTemplate.style.cssText = 'width: 25px; height: 25px; float: left;';
-	this.gridTemplate.type = 'holder';
-	
-	this.board = document.createElement('div');
-	this.board.id = this.name;
-	this.board.style.cssText = 'width: 800px; height: 450px; position: relative';
-	
-	this.background = document.createElement('canvas');
-	this.background.width = 1920;
-	this.background.height = 1080;
-	this.background.style.cssText = 'width: 800px; height: 450px; z-index: -1; position: absolute; top: 0px; left: 0px;';
-	this.bgCtx = this.background.getContext('2d');
-	
-	this.levelBuilder = new window.sks.LevelBuilder();
-	console.log(this.levelBuilder);
-	
-	let loopFunc = function(){
-		if(self.levelBuilder.isDirty()){
-			//TODO: Clear Canvas
-			self.levelBuilder.drawImage(self.bgCtx);
-			self.levelBuilder.render(self.bgCtx);
-			self.levelBuilder.drawGrid(self.bgCtx);
-		}
-		requestAnimationFrame(loopFunc);
-	}
-	
-	loopFunc();
-	
-	//Stupid js "this" crap
-	this.down = function(event){
-		self.renderEvent(event);
-		event.preventDefault();
-	}
-	this.over = function(event){
-		self.renderEvent(event);
-	}
-	this.click = function(event){
-		self.renderEvent(event);
-	}
-}
-//Generates a board
-window.lvl.prototype.generateBoard = function(){
-	for(var i = 0; i != (18 * 32); i++){
-		var grid = this.gridTemplate.cloneNode();
-		grid.id = this.name + (i + 1);
-		this.board.appendChild(grid);
-		
-		grid.addEventListener("mouseover", this.over);
-		grid.addEventListener("mousedown", this.down);
-		grid.addEventListener("click", this.click);
-	}
-	this.board.appendChild(this.background);
-	return this.board;
-}
-//Renders a specified block at specified index
-window.lvl.prototype.render = function(index, blockType){
-	if (!this.active) return;
-	if(blockType == 'delete'){
-		blockType = 'null';
-	}
-	this.levelBuilder.addBlock(index, blockType);	
-}
+// Init rustlib
+window.sks = require('sks-neon');
 
-window.lvl.prototype.setDark = function(value){
-	this.levelBuilder.setDark(value);
-}
-//Disables grid on board
-window.lvl.prototype.disableGrid = function(){
-	this.levelBuilder.disableGrid();
-}
-//Enables grid
-window.lvl.prototype.enableGrid = function(){
-	this.levelBuilder.enableGrid();
-}
-//Clears a tile at specified index
-window.lvl.prototype.clearTile = function(index){
-	this.levelBuilder.addBlock(index, 'null');	
-}
-//Clears all tiles on board
-window.lvl.prototype.clearAllTiles = function(){
-	for(var i = 0; i != (18 * 32); i++){
-		this.clearTile(i);
-	}
-}
+// Browser Code
+window.lvl = function (name) {
+    this.name = name;
+    var self = this;
 
-//Handler for a render event
-window.lvl.prototype.renderEvent = function(event){
-	var target = event.target;
-	if(target.type == 'block'){
-		target = target.parentNode;
-	}
-	
-	var index = Number(target.id.slice(this.name.length)) - 1;
-	
-	if(event.type == "mousedown"){
-		if(event.button == 0){
-			this.render(index, this.active);
-		}
-		
-		if(event.button == 2){
-			this.render(index, "delete");
-		}
-	}
-	
-	if(event.type == "mouseover"){
-		if(window.lvl.mouseDownRight){
-			this.render(index, this.active);
-		}
-		
-		if(window.lvl.mouseDownLeft){
-			this.render(index, "delete");
-		}
-	}
-}
+    this.board = document.createElement('canvas');
+    this.board.contentEditable = true;
+    this.board.id = this.name;
+    this.board.width = 1920;
+    this.board.height = 1080;
+    this.board.style.cssText = 'width: 100%; border: 0px; outline: 0px;';
+    this.board.style.cursor = 'pointer';
 
-lvl.prototype.export1D = function(){
-	return this.levelBuilder.exportLevel().map(window.sks.encodeBlockLBL);
-}
+    this.levelBuilder = new window.sks.LevelBuilder(this.board);
+    console.log(this.levelBuilder);
 
-lvl.prototype.exportLBL = function(){
-	var data = this.export1D();
-	var out = '';
-	for(var i = 0; i != data.length; i++){
-		out += data[i] + '\n';
-	}
-	return out;			
-}
+    let loopFunc = function () {
+        if (self.levelBuilder.isDirty()) {
+            let start = performance.now();
+            self.levelBuilder.drawFrame();
+            let end = performance.now();
+            console.log("Dirty Redraw: ", end - start);
+        }
 
-lvl.prototype.exportPNG = function(cb){
-	var array = this.export1D();
-	var can = document.createElement('canvas');
-	can.width = '800';
-	can.height = '450';
-	
-	var context = can.getContext('2d');
-	
-	var back = new Image();
-	back.src= './images/background.png';
-	context.drawImage(back, 0, 0, 800, 450);
-	
-	var count = 0;
-	var total = 0;
-	for(var i = 0; i != 18; i++){
-		for(var j = 0; j != 32; j++){
-			var drawing = new Image();
-			if(window.sks.decodeBlockLBL(array[( i * 32) + j]) != 'null'){
-				count++;
-				total++;
-				drawing.onload = (function() {
-					var a = drawing;
-					var x = j;
-					var y = i;
-					return function(){
-  	 					context.drawImage(a, x * 25, y * 25, 25, 25);
-						count--;
-						if(count == 0){
-							var output = can.toDataURL('image/png');
-							cb(output);
-						}
-					}
-				})();
-				drawing.src = './images/' + window.sks.decodeBlockLBL(array[(i * 32) + j]) + '.png';
-			}
-		}
-	}
-	if(total == 0){
-		var output = can.toDataURL('image/png');
-		cb(output);
-	}
-}
-
-lvl.prototype.exportDev = function(num){
-	num = num || 'x';
-	var array = this.export1D();
-	return window.sks.encodeAS3(num, array);
-}
-
-// Guesses the import format and imports
-lvl.prototype.import = function(data){
-	let res = this.levelBuilder.import(data);
-	document.getElementById('dark').checked = this.levelBuilder.getDark();
-	return res;
-}
-
-function checkCtrlZ(){
-    if(window.lvl.zDown == true && window.lvl.ctrlDown == true && history.length > 0){
-         var undo = level.history[level.history.length - 1];
-         console.log(undo);
-         level.render(undo.index, undo.oldBlock);
-         level.history.shift();  
+        self.levelBuilder.update();
+        requestAnimationFrame(loopFunc);
     }
+
+    loopFunc();
 }
 
-window.lvl.mouseDown = false;
-window.lvl.mouseDownLeft = false;
-window.lvl.mouseDownRight = false;
+lvl.prototype.exportLBL = function () {
+    return this.levelBuilder.export('lbl');
+}
 
+lvl.prototype.exportPNG = function (cb) {
+    return this.levelBuilder.getImage().toDataURL('image/png');
+}
+
+lvl.prototype.exportDev = function (num) {
+    this.levelBuilder.setLevel(num);
+    return this.levelBuilder.export('as3');
+}
+
+/*
+function checkCtrlZ() {
+if (window.lvl.zDown == true && window.lvl.ctrlDown == true && history.length > 0) {
+var undo = level.history[level.history.length - 1];
+console.log(undo);
+level.render(undo.index, undo.oldBlock);
+level.history.shift();
+}
+}
+ */
+// window.lvl.ctrlDown = false;
+// window.lvl.zDown = false;
+/*
+document.onkeydown = function (event) {
+switch (event.keyCode) {
+case 17: {
+window.lvl.ctrlDown = true;
+break;
+}
+case 90: {
+window.lvl.zDown = true;
+break;
+}
+}
+checkCtrlZ();
+}
+document.onkeyup = function (event) {
+switch (event.keyCode) {
+case 17: {
 window.lvl.ctrlDown = false;
+break;
+}
+case 90: {
 window.lvl.zDown = false;
-document.onmousedown = function(e){
-	if(e.button == 0){
-		window.lvl.mouseDownRight = true;
-	}else if(e.button == 2){
-		window.lvl.mouseDownLeft = true;
-	}
-	window.lvl.mouseDown = true;
+break;
 }
-document.onmouseup = function(e){
-	if(e.button == 0){
-		window.lvl.mouseDownRight = false;
-	}else if(e.button == 2){
-		window.lvl.mouseDownLeft = false;
-	}
-	window.lvl.mouseDown = false;
 }
-document.onkeydown = function(event){
-    switch(event.keyCode){
-        case 17: {
-            window.lvl.ctrlDown = true;
-            break;
+checkCtrlZ();
+}
+ */
+
+// Electron stuff
+try {
+    window.greenworks = require('greenworks');
+} catch (e) {
+    console.error('Greenworks dll error');
+    greenworks = {
+        initAPI: function () {
+            return false;
         }
-        case 90: {
-            window.lvl.zDown = true;
-            break;
+    };
+}
+
+window.path = require('path');
+window.process = require('process');
+window.remote = require('electron').remote;
+window.fs = require('fs');
+
+window.dialog = remote.dialog;
+window.srcDir = process.cwd();
+
+console.log('srcDir: ' + srcDir);
+process.activateUvLoop();
+window.onerror = function (errorMsg, url, lineNumber) {
+    alert(errorMsg + ' line: ' + lineNumber);
+};
+
+// Steamworks init
+window.steam = false;
+if (greenworks.initAPI()) {
+    console.log('Steamworks API Initialized');
+    window.steam = true;
+
+    let steamworksWorkshopSyncPath = path.resolve(srcDir, 'game/Custom Levels');
+
+    if (!fs.existsSync(steamworksWorkshopSyncPath)) {
+        try {
+            fs.mkdirSync(steamworksWorkshopSyncPath);
+        } catch (e) {
+            alert(e);
+            console.error(e);
         }
     }
-    checkCtrlZ();
-}
-document.onkeyup = function(event){
-    switch(event.keyCode){
-        case 17: {
-            window.lvl.ctrlDown = false;
-            break;
-        }
-        case 90: {
-            window.lvl.zDown = false;
-            break;
-        }
+    try {
+        greenworks.ugcSynchronizeItems(steamworksWorkshopSyncPath, function (items) {
+            console.log('Workshop Items Loaded: ');
+            console.log(items);
+        }, function (err) {
+            throw err;
+        });
+    } catch (e) {
+        alert(e);
     }
-    checkCtrlZ();
+} else {
+    console.log('Steamworks API Initialization Failed');
+}
+
+// Init
+window.level = new lvl('build');
+
+// Util
+function readFile(path, encoding) {
+    return new Promise((resolve, reject) => {
+        window.fs.readFile(path, encoding, function (err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
+
+function getExportWindow() {
+    let exportWindow = {};
+
+    exportWindow.main = document.getElementById('export');
+
+    exportWindow.dev = document.getElementById('export-dev');
+    exportWindow.dev.num = document.getElementById('export-dev-num');
+    exportWindow.dev.button = document.getElementById('export-dev-button');
+    exportWindow.dev.titleBox = document.getElementById('export-dev-title');
+
+    exportWindow.steam = document.getElementById('export-steam');
+    exportWindow.steam.titleBox = document.getElementById('export-steam-title');
+    exportWindow.steam.button = document.getElementById('export-steam-button');
+    exportWindow.steam.description = document.getElementById('export-steam-description');
+    exportWindow.steam.loading = document.getElementById('export-steam-loading');
+    exportWindow.steam.loading.status = document.getElementById('export-steam-loading-status');
+    exportWindow.steam.loading.spinner = document.getElementById('export-steam-loading-spinner');
+    exportWindow.steam.loading.spinner.container = document.getElementById('export-steam-loading-spinner-container');
+    exportWindow.steam.loading.button = document.getElementById('export-steam-loading-button');
+    exportWindow.steam.loading.button.container = document.getElementById('export-steam-loading-button-container');
+
+    exportWindow.lbl = document.getElementById('export-lbl');
+    exportWindow.lbl.titleBox = document.getElementById('export-lbl-title');
+    exportWindow.lbl.button = document.getElementById('export-lbl-button');
+
+    if (!steam)
+        exportWindow.steam.button.setAttribute('disabled', '');
+
+    exportWindow.steam.loading.setLoaded = function () {
+        exportWindow.steam.loading.status.innerHTML = 'Done';
+        exportWindow.steam.loading.removeAttribute('modal');
+        exportWindow.steam.loading.spinner.container.style.display = 'none';
+        exportWindow.steam.loading.button.container.style.display = '';
+        exportWindow.steam.loading.notifyResize();
+    }
+
+    exportWindow.steam.loading.reset = function () {
+        exportWindow.steam.loading.status.innerHTML = 'Uploading Files to Steam Cloud...';
+        exportWindow.steam.loading.setAttribute('modal', '');
+        exportWindow.steam.loading.spinner.container.style.display = '';
+        exportWindow.steam.loading.button.container.style.display = 'none';
+        exportWindow.steam.loading.notifyResize();
+    }
+
+    exportWindow.closeAll = function () {
+        exportWindow.main.close();
+        exportWindow.steam.close();
+        exportWindow.steam.loading.close();
+        exportWindow.dev.close();
+        exportWindow.lbl.close();
+    }
+
+    exportWindow.dev.saveFile = function () {
+        let num = exportWindow.dev.num.value || 'x';
+        let data = level.exportDev(num);
+        remote.dialog.showSaveDialog({
+            defaultPath: srcDir + '/' + exportWindow.dev.titleBox.value + '.txt'
+        }, function (path) {
+            if (path) {
+                fs.writeFile(path, data, function (err) {
+                    if (err) {
+                        throw err; //TODO: Handle errors
+                    } else {
+                        console.log("File Saved!");
+                        exportWindow.closeAll();
+                    }
+                });
+            }
+        });
+    }
+
+    exportWindow.lbl.saveFile = function () {
+        let data = level.exportLBL();
+        remote.dialog.showSaveDialog({
+            defaultPath: srcDir + '/' + exportWindow.lbl.titleBox.value + '.txt'
+        }, function (path) {
+            if (path) {
+                fs.writeFile(path, data, function (err) {
+                    if (err) {
+                        throw err; //TODO: Handle errors
+                    } else {
+                        console.log("File Saved!");
+                        exportWindow.closeAll();
+                    }
+                });
+            }
+        });
+    }
+
+    exportWindow.steam.upload = function () {
+        let title = exportWindow.steam.titleBox.value; //TODO: Validate param
+        let description = exportWindow.steam.description.value;
+
+        let levelPath = title + '.txt';
+        let coverPath = title + '.png';
+        let levelData = level.exportLBL();
+
+        exportWindow.steam.loading.reset();
+        exportWindow.closeAll();
+        exportWindow.steam.loading.open();
+
+        function onStatusUpdate(status) {
+            let stat;
+            switch (status) {
+            case 'Completed on saving files on Steam Cloud.': {
+                    stat = 'Sharing Files to Steam Cloud...';
+                    break;
+                }
+            case 'Completed on sharing files.': {
+                    stat = 'Uploading to Workshop...';
+                    break;
+                }
+            }
+            console.log('Workshop Upload Status: ' + status);
+            exportWindow.steam.loading.status.innerHTML = stat;
+            exportWindow.steam.loading.notifyResize();
+        }
+
+        function getLevelPNG() {
+            return new Promise(function (resolve, reject) {
+                resolve(level.exportPNG());
+            });
+        }
+
+        function createFile(path, data, opts) {
+            return new Promise(function (resolve, reject) {
+                fs.writeFile(path, data, opts, function (err) {
+                    if (err) {
+                        return reject(err);
+                    }
+                    return resolve();
+                });
+            });
+        }
+
+        function publishSteamFile(levelPath, levelTitle, levelDescription, levelImagePath, update) {
+            return new Promise(function (resolve, reject) {
+                greenworks.ugcPublish(levelPath, levelTitle, levelDescription, levelImagePath, function (handle) {
+                    resolve(handle);
+                }, function (err) {
+                    reject(err);
+                }, function (msg) {
+                    update(msg);
+                });
+            });
+        }
+
+        getLevelPNG().catch(function (err) {
+            throw err;
+        }).then(function (data) {
+            console.log("Cover File Generated!");
+            data = data.replace(/^data:image\/png;base64,/, "");
+            return createFile(coverPath, data, 'base64');
+        }).catch(function (err) {
+            return err;
+        }).then(function () {
+            console.log("Cover File Created!");
+            return createFile(levelPath, levelData);
+        }).catch(function (err) {
+            throw err;
+        }).then(function () {
+            console.log('Level File Saved!');
+            return publishSteamFile(levelPath, title, description, coverPath, onStatusUpdate);
+        }).catch(function (err) {
+            throw err;
+        }).then(function (handle) {
+            console.log("Workshop File Uploaded!");
+            console.log("Workshop File Handle: " + handle);
+            exportWindow.steam.loading.setLoaded();
+        });
+    }
+
+    return exportWindow;
 }
