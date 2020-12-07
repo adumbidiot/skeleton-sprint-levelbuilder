@@ -1,8 +1,17 @@
+mod error_modal;
 mod note_modal;
 mod style;
 mod widgets;
 
+pub use self::error_modal::{
+    ErrorModal,
+    ErrorModalMessage,
+};
 use self::{
+    note_modal::{
+        NoteModal,
+        NoteModalMessage,
+    },
     style::DarkTheme,
     widgets::{
         Board,
@@ -14,10 +23,6 @@ use iced_core::{
     Length,
     Point,
     Rectangle,
-};
-pub use note_modal::{
-    NoteModal,
-    NoteModalMessage,
 };
 use sks::format::LevelNumber;
 use std::sync::Arc;
@@ -62,12 +67,10 @@ pub enum Message {
     SetDark(bool),
     SetGrid(bool),
     ChangeActiveBlock { block: Option<sks::Block> },
-    OpenErrorModal(Arc<AppError>),
     OpenExportModal,
 
     NoteModalMessage(NoteModalMessage),
-
-    CloseErrorModal,
+    ErrorModalMessage(ErrorModalMessage),
 
     ChangeExportModalState(ExportModalState),
     ExportModalLblTextInputChanged(String),
@@ -99,9 +102,7 @@ pub struct UiApp {
     app_state: AppState,
 
     note_modal: NoteModal,
-
-    error_modal_error: Option<Arc<AppError>>,
-    error_modal_ok_button_state: iced::widget::button::State,
+    error_modal: ErrorModal,
 
     export_modal_state: ExportModalState,
     export_modal_close_button_state: iced::widget::button::State,
@@ -133,9 +134,7 @@ impl UiApp {
             app_state: AppState::Builder,
 
             note_modal: NoteModal::new(),
-
-            error_modal_error: None,
-            error_modal_ok_button_state: iced::widget::button::State::new(),
+            error_modal: ErrorModal::new(),
 
             export_modal_state: ExportModalState::ChooseFormat,
             export_modal_close_button_state: iced::widget::button::State::new(),
@@ -258,56 +257,7 @@ impl UiApp {
         .into()
     }
 
-    fn error_modal_view(&mut self) -> iced::Element<<Self as iced_native::Program>::Message> {
-        let default_padding = 10;
-
-        let title = iced::Text::new("Error")
-            .size(70)
-            .horizontal_alignment(iced_core::HorizontalAlignment::Center);
-
-        let error_msg = iced::Text::new(
-            self.error_modal_error
-                .as_ref()
-                .map(|e| e.to_string())
-                .unwrap_or_else(|| "Error was not specified".into()),
-        )
-        .size(70)
-        .horizontal_alignment(iced_core::HorizontalAlignment::Center);
-
-        let ok_button = iced::Button::new(
-            &mut self.error_modal_ok_button_state,
-            iced::Text::new("Ok").size(30),
-        )
-        .padding(default_padding)
-        .style(DarkTheme::primary())
-        .on_press(Message::CloseErrorModal);
-
-        let main_content = iced_native::Container::new(
-            iced_native::Column::new()
-                .push(title)
-                .push(iced::Space::new(Length::Fill, Length::Fill))
-                .push(error_msg)
-                .push(iced::Space::new(Length::Fill, Length::Fill))
-                .push(ok_button)
-                .align_items(iced_core::Align::Center)
-                .spacing(default_padding)
-                .width(Length::Fill),
-        )
-        .padding(default_padding)
-        .style(DarkTheme::primary())
-        .center_x()
-        .width(Length::Fill)
-        .height(Length::Fill);
-
-        iced::Container::new(main_content)
-            .padding(default_padding)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x()
-            .into()
-    }
-
-    fn export_modal_view(&mut self) -> iced::Element<<Self as iced_native::Program>::Message> {
+    fn export_modal_view(&mut self) -> iced::Element<Message> {
         let default_padding = 10;
 
         let title = iced::Text::new("Export")
@@ -331,12 +281,20 @@ impl UiApp {
                 .spacing(default_padding),
             ExportModalState::Lbl => iced::Column::new()
                 .push(iced::Text::new("Level File").size(30))
-                .push(iced::TextInput::new(
-                    &mut self.export_modal_export_lbl_text_input_state,
-                    "",
-                    &self.export_modal_export_lbl_text_input_content,
-                    Message::ExportModalLblTextInputChanged,
-                ))
+                .push(
+                    iced::Row::new()
+                        .push(iced::Text::new("Filename").size(30))
+                        .push(
+                            iced::TextInput::new(
+                                &mut self.export_modal_export_lbl_text_input_state,
+                                "",
+                                &self.export_modal_export_lbl_text_input_content,
+                                Message::ExportModalLblTextInputChanged,
+                            )
+                            .padding(default_padding),
+                        )
+                        .spacing(default_padding),
+                )
                 .push(
                     iced::Button::new(
                         &mut self.export_modal_export_type_lbl_button_state,
@@ -355,7 +313,7 @@ impl UiApp {
         )
         .padding(default_padding)
         .style(DarkTheme::primary())
-        .on_press(Message::CloseErrorModal);
+        .on_press(Message::CloseExportModal);
 
         let main_content = iced_native::Container::new(
             iced_native::Column::new()
@@ -400,7 +358,7 @@ impl iced_native::Program for UiApp {
                 if let Err(e) = self.level.import_str(&level_string) {
                     return iced::Command::perform(
                         async move { Arc::new(AppError::SksDecode(e)) },
-                        Message::OpenErrorModal,
+                        |e| Message::ErrorModalMessage(ErrorModalMessage::Open(e)),
                     );
                 }
             }
@@ -410,11 +368,6 @@ impl iced_native::Program for UiApp {
             Message::SetDark(dark) => self.level.set_dark(dark),
             Message::SetGrid(grid) => self.grid = grid,
             Message::ChangeActiveBlock { block } => self.active_block = block,
-            Message::OpenErrorModal(e) => {
-                self.error_modal_error = Some(e);
-                self.app_state = AppState::ErrorModal;
-            }
-            Message::CloseErrorModal => self.app_state = AppState::Builder,
             Message::CloseExportModal => self.app_state = AppState::Builder,
             Message::OpenExportModal => {
                 self.export_modal_state = ExportModalState::ChooseFormat;
@@ -439,6 +392,14 @@ impl iced_native::Program for UiApp {
 
                 self.note_modal.update(msg)
             }
+            Message::ErrorModalMessage(msg) => {
+                match &msg {
+                    ErrorModalMessage::Open(_) => self.app_state = AppState::ErrorModal,
+                    ErrorModalMessage::Close => self.app_state = AppState::Builder,
+                }
+
+                self.error_modal.update(msg);
+            }
             Message::ExportModalLblTextInputChanged(content) => {
                 self.export_modal_export_lbl_text_input_content = content;
             }
@@ -459,7 +420,9 @@ impl iced_native::Program for UiApp {
                     },
                     |level_string| match level_string {
                         Ok(Ok(data)) => Message::ImportLevel(data),
-                        Err(e) | Ok(Err(e)) => Message::OpenErrorModal(Arc::new(e)),
+                        Err(e) | Ok(Err(e)) => {
+                            Message::ErrorModalMessage(ErrorModalMessage::Open(Arc::new(e)))
+                        }
                     },
                 );
             }
@@ -479,10 +442,12 @@ impl iced_native::Program for UiApp {
 
                             let mut nfd = win_nfd::nfd_save_builder();
                             nfd.default_path(".".as_ref())
-                                .filetype("lbl file".as_ref(), "*.txt".as_ref());
+                                .filetype("level file".as_ref(), "*.txt".as_ref());
 
                             if !filename.is_empty() {
                                 nfd.filename(filename.as_ref());
+                            } else {
+                                nfd.filename("level.txt".as_ref());
                             }
 
                             let save_path = nfd.execute()?;
@@ -496,7 +461,9 @@ impl iced_native::Program for UiApp {
 
                         match res {
                             Ok(Ok(())) => Message::CloseExportModal,
-                            Ok(Err(e)) | Err(e) => Message::OpenErrorModal(Arc::new(e)),
+                            Ok(Err(e)) | Err(e) => {
+                                Message::ErrorModalMessage(ErrorModalMessage::Open(Arc::new(e)))
+                            }
                         }
                     },
                     std::convert::identity,
@@ -508,11 +475,11 @@ impl iced_native::Program for UiApp {
         iced::Command::none()
     }
 
-    fn view(&mut self) -> iced_native::Element<Self::Message, Self::Renderer> {
+    fn view(&mut self) -> iced::Element<Self::Message> {
         match self.app_state {
             AppState::Builder => self.builder_view(),
             AppState::NoteModal => self.note_modal.view().map(Message::NoteModalMessage),
-            AppState::ErrorModal => self.error_modal_view(),
+            AppState::ErrorModal => self.error_modal.view().map(Message::ErrorModalMessage),
             AppState::ExportModal => self.export_modal_view(),
         }
     }
