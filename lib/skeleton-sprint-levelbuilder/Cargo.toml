@@ -14,7 +14,8 @@ iced_wgpu = { version = "0.3.0", features = [ "image" ] }
 iced_native = "0.3.0"
 iced_graphics = "0.1.0"
 image = "0.23.12"
-sks = { path = "C:/Users/nathaniel/Documents/Github/sks-rs" }
+# sks = { path = "C:/Users/nathaniel/Documents/Github/sks-rs" }
+sks = { git = "https://github.com/adumbidiot/sks-rs", branch = "levelbuilder-upgrades" }
 thiserror = "1.0.22"
 tokio = { version = "0.3.5", features = [ "rt-multi-thread" ] }
 wgpu = "0.6.2"

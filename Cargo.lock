@@ -2280,6 +2280,7 @@ dependencies = [
 [[package]]
 name = "sks"
 version = "0.0.1"
+source = "git+https://github.com/adumbidiot/sks-rs?branch=levelbuilder-upgrades#d515b9c0d0fd0a65d83616261df4db64ddfff31b"
 dependencies = [
  "Boa",
  "image",
