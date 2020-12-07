@@ -11,10 +11,16 @@ unmaintained = "deny"
 notice = "deny"
 ignore = [
     # Blocked on iced bumping tokio to 0.3.x
-    "RUSTSEC-2020-0016",
+    # "RUSTSEC-2020-0016",
     
     # Blocked on font-kit moving away from dirs
     "RUSTSEC-2020-0053",
+    
+    # Probably maintained by BurntShushi?
+    "RUSTSEC-2020-0077",
+    
+    # Blocked on winit updating mio-extras
+    "RUSTSEC-2020-0016",
 ]
 
 [licenses]
@@ -66,7 +72,16 @@ skip = [
     { name = "miniz_oxide", version = "0.3.7" },
     
     # Blocked on iced updating tokio to 0.3.x
-    { name = "winapi", version = "0.2.7" }
+    { name = "winapi", version = "0.2.7" },
+    
+    # Blocked on owned_ttf_parser updating ttf-parser to 0.8.x
+    { name = "owned_ttf_parser", version = "0.6.0" },
+    { name = "ttf-parser", version = "0.6.2" },
+    
+    # Blocked on iced_graphics updating to 0.22.x
+    { name = "core-graphics", version = "0.19.2" },
+    { name = "core-foundation", version = "0.7.0" },
+    { name = "core-foundation-sys", version = "0.7.0" },
 ]
 
 # Mostly soundness denies since the advisory lacks a section for soundess bugs
@@ -101,4 +116,6 @@ deny = [
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = [ "https://github.com/rust-lang/crates.io-index" ]
-allow-git = []
+allow-git = [
+    "https://github.com/adumbidiot/sks-rs",
+]
