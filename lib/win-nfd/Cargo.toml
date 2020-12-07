@@ -9,7 +9,7 @@ license = "MIT"
 com = "0.3.0"
 thiserror = "1.0.22"
 widestring = "0.4.3"
-winapi = { version = "0.3.9", features = [ "shlobj", "shobjidl_core", "combaseapi", "winbase" ] }
+winapi = { version = "0.3.9", features = [ "shlobj", "shtypes", "shobjidl_core", "combaseapi", "winbase" ] }
 
 [dev-dependencies]
 winapi = { version = "0.3.9", features = [ "shellscalingapi"] }

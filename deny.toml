@@ -9,10 +9,7 @@ targets = [
 vulnerability = "deny"
 unmaintained = "deny"
 notice = "deny"
-ignore = [
-    # Blocked on iced bumping tokio to 0.3.x
-    # "RUSTSEC-2020-0016",
-    
+ignore = [    
     # Blocked on font-kit moving away from dirs
     "RUSTSEC-2020-0053",
     
@@ -71,7 +68,7 @@ skip = [
     # Blocked on png buming miniz_oxide to 0.4.x
     { name = "miniz_oxide", version = "0.3.7" },
     
-    # Blocked on iced updating tokio to 0.3.x
+    # Blocked on winit updating mio-utils to 0.7.x
     { name = "winapi", version = "0.2.7" },
     
     # Blocked on owned_ttf_parser updating ttf-parser to 0.8.x
