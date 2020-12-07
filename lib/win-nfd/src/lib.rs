@@ -667,6 +667,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn it_works_open_default() {
         set_dpi();
 
@@ -677,6 +678,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn it_works_open() {
         set_dpi();
 
@@ -693,6 +695,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn it_works_save_default() {
         set_dpi();
 
@@ -703,6 +706,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn it_works_save() {
         set_dpi();
 
