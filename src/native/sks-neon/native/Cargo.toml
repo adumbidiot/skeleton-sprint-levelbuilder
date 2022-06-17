@@ -15,5 +15,5 @@ crate-type = [ "dylib" ]
 neon-build = "0.3.0"
 
 [dependencies]
-neon = "0.3.3"
+neon = "0.10.1"
 sks = { path = "lib/sks_legacy", package = "sks_legacy" }
