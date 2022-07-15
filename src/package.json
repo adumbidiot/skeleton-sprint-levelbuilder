@@ -36,7 +36,7 @@
 		"rollup": "^1.20.3",
 		"rollup-plugin-node-resolve": "^5.2.0",
 		"rollup-plugin-svelte": "^5.1.0",
-		"svelte": "^3.9.2"
+		"svelte": "^3.49.0"
 	},
 	"dependencies": {
 		"greenworks": "git+https://github.com/greenheartgames/greenworks.git#d3c1e8c3ccc376f31b0cee54de86d034d4a1a588",
